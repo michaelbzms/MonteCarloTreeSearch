@@ -5,7 +5,7 @@
 #include <vector>
 #include <queue>
 
-#define STARTING_NUMBER_OF_CHILDREN 8   // expected number so that we can preallocate this many pointers
+#define STARTING_NUMBER_OF_CHILDREN 4   // expected number so that we can preallocate this many pointers
 
 
 using namespace std;
@@ -13,6 +13,7 @@ using namespace std;
 
 class MCTS_node {
     bool terminal;
+    unsigned int size;
     unsigned int number_of_simulations;
     double score;                       // e.g. number of wins (could be int but double is more general if we use evaluation functions)
     MCTS_state *state;                  // current state
@@ -24,8 +25,9 @@ class MCTS_node {
 public:
     MCTS_node(MCTS_node *parent, MCTS_state *state, MCTS_move *move);
     ~MCTS_node();
-    bool is_fully_expanded();
+    bool is_fully_expanded() const;
     bool is_terminal() const;
+    unsigned int get_size() const;
     void expand();
     void rollout();
     MCTS_node *select_best_child(double c);
@@ -35,7 +37,6 @@ public:
 
 class MCTS_tree {
     MCTS_node *root;
-    unsigned int size;
 public:
     MCTS_tree(MCTS_state *starting_state);
     ~MCTS_tree();

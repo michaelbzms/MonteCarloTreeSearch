@@ -12,7 +12,7 @@ using namespace std;
 
 /*** MCTS NODE ***/
 MCTS_node::MCTS_node(MCTS_node *parent, MCTS_state *state, MCTS_move *move)
-        : parent(parent), state(state), move(move), score(0.0), number_of_simulations(0) {
+        : parent(parent), state(state), move(move), score(0.0), number_of_simulations(0), size(0) {
     children = new vector<MCTS_node>();
     children->reserve(STARTING_NUMBER_OF_CHILDREN);
     untried_actions = state->actions_to_try();
@@ -41,7 +41,7 @@ void MCTS_node::expand() {
 }
 
 void MCTS_node::rollout() {
-    // TODO: do more than one rollouts? Perhaps in parallel?
+    // TODO: do more than one simulations? Perhaps in parallel?
     double w = state->rollout();
     backpropagate(w, 1);
 }
@@ -49,17 +49,22 @@ void MCTS_node::rollout() {
 void MCTS_node::backpropagate(double w, int n) {
     score += w;
     number_of_simulations++;
+    size++;   // Note: number of sims can differ from size if we do more than one per node expanded.
     if (parent != NULL) {
         parent->backpropagate(w, n);
     }
 }
 
-bool MCTS_node::is_fully_expanded() {
+bool MCTS_node::is_fully_expanded() const {
     return is_terminal() || untried_actions->empty();
 }
 
 bool MCTS_node::is_terminal() const {
     return terminal;
+}
+
+unsigned int MCTS_node::get_size() const {
+    return size;
 }
 
 MCTS_node *MCTS_node::select_best_child(double c) {
@@ -84,6 +89,7 @@ MCTS_node *MCTS_node::select_best_child(double c) {
     }
 }
 
+
 /*** MCTS TREE ***/
 MCTS_node *MCTS_tree::select(double c) {
     MCTS_node *node = root;
@@ -94,11 +100,10 @@ MCTS_node *MCTS_tree::select(double c) {
             node = node->select_best_child(c);
         }
     }
-
-
+    return node;
 }
 
-MCTS_tree::MCTS_tree(MCTS_state *starting_state) : size(0), root(NULL) {
+MCTS_tree::MCTS_tree(MCTS_state *starting_state) : root(NULL) {
     assert(starting_state != NULL);
     root = new MCTS_node(NULL, starting_state, NULL);
 }
@@ -130,5 +135,5 @@ void MCTS_tree::grow_tree(int max_iter, double max_time_in_seconds) {
 }
 
 unsigned int MCTS_tree::get_size() const {
-    return size;
+    return root != NULL && root->get_size();
 }
