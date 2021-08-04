@@ -119,3 +119,8 @@ char TicTacToe_state::get_winner(bool test) {
     if (test) is_terminal();
     return winner;
 }
+
+bool TicTacToe_move::operator==(const MCTS_move &other) const {
+    const TicTacToe_move &o = (const TicTacToe_move &) other;        // TODO: Casting necessary
+    return x == o.x && y == o.y && player == o.player;
+}

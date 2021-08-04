@@ -31,6 +31,8 @@ public:
     void expand();
     void rollout();
     MCTS_node *select_best_child(double c);
+    MCTS_node *advance_tree(MCTS_move *move);
+    MCTS_node *
 };
 
 
@@ -42,6 +44,7 @@ public:
     ~MCTS_tree();
     MCTS_node *select(double c=1.41);        // select child node according to tree policy (UCT)
     void grow_tree(int max_iter, double max_time_in_seconds);
+    void advance_tree(MCTS_move *move);      // if the move is applicable advance the tree, else start over
     unsigned int get_size() const;
 };
 

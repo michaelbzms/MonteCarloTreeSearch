@@ -9,9 +9,8 @@ using namespace std;
 
 
 struct MCTS_move {
-    // TODO: ???
-    // TODO: Queue iteration:  for (auto it=queue.begin(); it!=int_queue.end(); it++)
     virtual ~MCTS_move() = default;
+    virtual bool operator==(const MCTS_move& other) const = 0;   // implement this!
 };
 
 

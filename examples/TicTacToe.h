@@ -31,6 +31,7 @@ struct TicTacToe_move : public MCTS_move {
     int x, y;
     char player;
     TicTacToe_move(int x, int y, char p) : x(x), y(y), player(p) {}
+    bool operator==(const MCTS_move& other) const override;
 };
 
 #endif

@@ -146,3 +146,31 @@ void MCTS_tree::grow_tree(int max_iter, double max_time_in_seconds) {
 unsigned int MCTS_tree::get_size() const {
     return root != NULL && root->get_size();
 }
+
+MCTS_node *MCTS_node::advance_tree(MCTS_move *move) {
+    // Find child with this move and delete all others
+    MCTS_node *next = NULL;
+    for (auto *child: *children) {
+        if (*(child->move) == *(move)) {
+            next = child;
+        } else {
+            delete child;
+        }
+    }
+    // remove children from queue so that they won't be re-deleted by the destructor when this node dies (!)
+    this->children->clear();
+    // if not found then we have to create a new node
+    if (next == NULL) {
+        cout << "INFO: Didn't find child node. Had to start over." << endl;
+        MCTS_state *next_state = state->next_state(move);
+        next = new MCTS_node(NULL, next_state, NULL);
+    }
+    // return the next root
+    return next;
+}
+
+void MCTS_tree::advance_tree(MCTS_move *move) {
+    MCTS_node *old_root = root;
+    root = root->advance_tree(move);
+    delete old_root;       // this won't delete the new root since we have emptied old_root's children
+}
