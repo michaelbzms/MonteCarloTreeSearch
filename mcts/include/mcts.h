@@ -18,9 +18,9 @@ class MCTS_node {
     double score;                       // e.g. number of wins (could be int but double is more general if we use evaluation functions)
     MCTS_state *state;                  // current state
     MCTS_move *move;                    // move to get here from parent node's state
-    vector<MCTS_node> *children;
+    vector<MCTS_node *> *children;
     MCTS_node *parent;
-    queue<MCTS_move> *untried_actions;
+    queue<MCTS_move *> *untried_actions;
     void backpropagate(double w, int n);
 public:
     MCTS_node(MCTS_node *parent, MCTS_state *state, MCTS_move *move);

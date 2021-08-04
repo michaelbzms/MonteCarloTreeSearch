@@ -46,12 +46,17 @@ MCTS_state *TicTacToe_state::next_state(MCTS_move *move) {
     return new_state;
 }
 
-queue<MCTS_move> *TicTacToe_state::actions_to_try() {
+queue<MCTS_move *> * TicTacToe_state::actions_to_try() {
     return nullptr;
 }
 
 double TicTacToe_state::rollout() {
-    return 0;
+    return 0.0;
 }
 
-
+void TicTacToe_state::print() {
+    printf(" %c | %c | %c\n---+---+---\n %c | %c | %c\n---+---+---\n %c | %c | %c\n",
+           board[0][0], board[0][1], board[0][2],
+           board[1][0], board[1][1], board[1][2],
+           board[2][0], board[2][1], board[2][2]);
+}

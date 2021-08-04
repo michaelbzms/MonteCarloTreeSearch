@@ -13,14 +13,23 @@ using namespace std;
 /*** MCTS NODE ***/
 MCTS_node::MCTS_node(MCTS_node *parent, MCTS_state *state, MCTS_move *move)
         : parent(parent), state(state), move(move), score(0.0), number_of_simulations(0), size(0) {
-    children = new vector<MCTS_node>();
+    children = new vector<MCTS_node *>();
     children->reserve(STARTING_NUMBER_OF_CHILDREN);
     untried_actions = state->actions_to_try();
     terminal = state->is_terminal();
 }
 
 MCTS_node::~MCTS_node() {
+    delete move;
+    for (auto *child : *children) {
+        delete child;
+    }
     delete children;
+    while (!untried_actions->empty()) {
+        delete untried_actions->front();    // if a move is here then it is not a part of a child node and needs to be deleted here
+        untried_actions->pop();
+    }
+    delete untried_actions;
 }
 
 void MCTS_node::expand() {
@@ -29,15 +38,15 @@ void MCTS_node::expand() {
         return;
     }
     // get next untried action
-    MCTS_move next_move = untried_actions->front();     // get value
+    MCTS_move *next_move = untried_actions->front();     // get value
     untried_actions->pop();                             // remove it
     MCTS_state *next_state = state->next_state(next_move);
     // build a new MCTS node from it
-    MCTS_node new_node(this, next_state, &next_move);
+    MCTS_node *new_node = new MCTS_node(this, next_state, next_move);
     // rollout, updating its stats
-    new_node.rollout();
+    new_node->rollout();
     // add new node to tree
-    children->push_back(new_node);                      // TODO: copy by value (right?)
+    children->push_back(new_node);
 }
 
 void MCTS_node::rollout() {
@@ -69,20 +78,20 @@ unsigned int MCTS_node::get_size() const {
 
 MCTS_node *MCTS_node::select_best_child(double c) {
     if (children->empty()) return NULL;
-    else if (children->size() == 1) return &children->at(0);
+    else if (children->size() == 1) return children->at(0);
     else {
         double uct, max = -1;
         MCTS_node *argmax = NULL;
-        for (auto& child : *children) {
+        for (auto *child : *children) {
             if (c > 0) {
-                uct = child.score / ((double) child.number_of_simulations) +
-                      c * sqrt(log((double) this->number_of_simulations) / ((double) child.number_of_simulations));
+                uct = child->score / ((double) child->number_of_simulations) +
+                      c * sqrt(log((double) this->number_of_simulations) / ((double) child->number_of_simulations));
             } else {
-                uct = child.score / child.number_of_simulations;
+                uct = child->score / child->number_of_simulations;
             }
             if (uct > max) {
                 max = uct;
-                argmax = &child;
+                argmax = child;
             }
         }
         return argmax;
