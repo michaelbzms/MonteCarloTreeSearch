@@ -34,16 +34,14 @@ int main() {
 
     MCTS_state *state = new TicTacToe_state(), *new_state;
     state->print();   // IMPORTANT: state will be garbage after advance_tree()
-    MCTS_agent agent(state, 100);
+    MCTS_agent agent(state, 10000);
     MCTS_move *enemy_move = NULL;
     do {
-        cout << "1" << endl;
+        agent.feedback();
         agent.genmove(enemy_move);
-        cout << "1.5" << endl;
         new_state = (MCTS_state *) agent.get_current_state();   // TODO: remove casting, fix const...
         new_state->print();
         if (new_state->is_terminal()) break;
-        cout << "2" << endl;
         enemy_move = select_random_move(new_state);
     } while (!new_state->is_terminal());
 
@@ -51,7 +49,7 @@ int main() {
 }
 
 
-MCTS_move *select_random_move(const MCTS_state *state){   // TODO
+MCTS_move *select_random_move(const MCTS_state *state){
     MCTS_move *move = NULL, *m = NULL;
     queue<MCTS_move *> *actions = state->actions_to_try();
     int r = rand() % actions->size();

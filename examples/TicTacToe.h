@@ -20,7 +20,7 @@ public:
     char get_turn() const;
     char get_winner(bool test = true);
     bool is_terminal() override;
-    MCTS_state *next_state(MCTS_move *move) override;
+    MCTS_state *next_state(MCTS_move *move) const override;
     queue<MCTS_move *> *actions_to_try() const override;
     double rollout() override;                        // the rollout simulation in MCTS
     void print() const override;

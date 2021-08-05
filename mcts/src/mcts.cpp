@@ -79,7 +79,7 @@ unsigned int MCTS_node::get_size() const {
     return size;
 }
 
-MCTS_node *MCTS_node::select_best_child(double c) {
+MCTS_node *MCTS_node::select_best_child(double c) const {
     if (children->empty()) return NULL;
     else if (children->size() == 1) return children->at(0);
     else {
@@ -137,13 +137,12 @@ void MCTS_tree::grow_tree(int max_iter, double max_time_in_seconds) {
         // check if we need to stop
         time(&now_t);
         dt = difftime(now_t, start_t);
-        // TODO
-//        if (dt > max_time_in_seconds) {
-//            #ifdef DEBUG
-//            cout << "Made " << (i + 1) << " iterations in " << dt << " seconds!" << endl;
-//            #endif
-//            break;
-//        }
+        if (dt > max_time_in_seconds) {
+            #ifdef DEBUG
+            cout << "Made " << (i + 1) << " iterations in " << dt << " seconds!" << endl;
+            #endif
+            break;
+        }
     }
 }
 
@@ -183,6 +182,13 @@ MCTS_move *MCTS_node::get_move() const {
 
 const MCTS_state *MCTS_node::get_current_state() const { return state; }
 
+void MCTS_node::print_stats() const {
+    if (number_of_simulations == 0) return;
+    cout << "___ INFO _______________________" << endl
+         << "Chances of winning: " << setprecision(4) << 100.0 * (score / number_of_simulations) << "%" << endl;
+    cout << "________________________________" << endl;
+}
+
 void MCTS_tree::advance_tree(MCTS_move *move) {
     MCTS_node *old_root = root;
     root = root->advance_tree(move);
@@ -195,6 +201,8 @@ MCTS_node *MCTS_tree::select_best_child() {
     return root->select_best_child(0.0);
 }
 
+void MCTS_tree::print_stats() const { root->print_stats(); }
+
 
 /*** MCTS agent ***/
 MCTS_agent::MCTS_agent(MCTS_state *starting_state, int max_iter, int max_seconds)
@@ -206,13 +214,15 @@ MCTS_move *MCTS_agent::genmove(MCTS_move *enemy_move) {
     if (enemy_move != NULL) {
         tree->advance_tree(enemy_move);
     }
-#ifdef DEBUG
-    cout << "Growing tree..." << endl;
-#endif
+    #ifdef DEBUG
+    cout << "___ DEBUG ______________________" << endl
+         << "Growing tree..." << endl;
+    #endif
     tree->grow_tree(max_iter, max_seconds);
-#ifdef DEBUG
-    cout << "Tree size: " << tree->get_size() << endl;
-#endif
+    #ifdef DEBUG
+    cout << "Tree size: " << tree->get_size() << endl
+         << "________________________________" << endl;
+    #endif
     MCTS_node *best_child = tree->select_best_child();
     MCTS_move *best_move = best_child->get_move();
     tree->advance_tree(best_move);

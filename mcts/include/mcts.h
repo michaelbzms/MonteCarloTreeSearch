@@ -4,6 +4,7 @@
 #include "state.h"
 #include <vector>
 #include <queue>
+#include <iomanip>
 
 #define STARTING_NUMBER_OF_CHILDREN 4   // expected number so that we can preallocate this many pointers
 
@@ -35,10 +36,10 @@ public:
     unsigned int get_size() const;
     void expand();
     void rollout();
-    MCTS_node *select_best_child(double c);
+    MCTS_node *select_best_child(double c) const;
     MCTS_node *advance_tree(MCTS_move *m);
     const MCTS_state *get_current_state() const;
-
+    void print_stats() const;
 };
 
 
@@ -54,6 +55,7 @@ public:
     void advance_tree(MCTS_move *move);      // if the move is applicable advance the tree, else start over
     unsigned int get_size() const;
     const MCTS_state *get_current_state() const;
+    void print_stats() const;
 };
 
 
@@ -65,6 +67,7 @@ public:
     ~MCTS_agent();
     MCTS_move *genmove(MCTS_move *enemy_move);
     const MCTS_state *get_current_state() const;
+    void feedback() const { tree->print_stats(); }
 };
 
 

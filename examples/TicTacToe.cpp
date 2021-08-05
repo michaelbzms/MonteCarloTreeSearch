@@ -56,8 +56,8 @@ void TicTacToe_state::change_turn() {
     turn = (turn == 'x') ? 'o' : 'x';
 }
 
-MCTS_state *TicTacToe_state::next_state(MCTS_move *move) {
-    // TODO: We have to manually cast it to its correct type
+MCTS_state *TicTacToe_state::next_state(MCTS_move *move) const {
+    // Note: We have to manually cast it to its correct type
     TicTacToe_move *m = (TicTacToe_move *) move;
     TicTacToe_state *new_state = new TicTacToe_state(*this);  // create new state from current
     if (new_state->board[m->x][m->y] == ' ') {
@@ -105,7 +105,6 @@ double TicTacToe_state::rollout() {
         available.erase(available.begin() + r);    // delete from available moves
         curstate = (TicTacToe_state *) curstate->next_state(&move);
     } while (!curstate->is_terminal());
-    // curstate->print();   // DEBUG
     return (curstate->winner == 'x') ? 1.0 : (curstate->winner == 'd') ? 0.5 : 0.0;
 }
 
