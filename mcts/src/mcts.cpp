@@ -35,7 +35,8 @@ MCTS_node::~MCTS_node() {
 
 void MCTS_node::expand() {
     if (is_terminal()) {              // can legitimately happen in end-game situations
-        return;                       // don't do anything
+        rollout();                    // keep rolling out, eventually causing UCT to pick another node to expand due to exploration
+        return;
     } else if (is_fully_expanded()) {
         cerr << "Warning: Cannot expanded this node any more!" << endl;
         return;
@@ -164,6 +165,7 @@ MCTS_node *MCTS_node::advance_tree(MCTS_move *m) {
     this->children->clear();
     // if not found then we have to create a new node
     if (next == NULL) {
+        // Note: UCT may lead to not fully explored tree even for short-term children due to terminal nodes being chosen
         cout << "INFO: Didn't find child node. Had to start over." << endl;
         MCTS_state *next_state = state->next_state(m);
         next = new MCTS_node(NULL, next_state, NULL);
