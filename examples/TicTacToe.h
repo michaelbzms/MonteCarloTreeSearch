@@ -21,7 +21,7 @@ public:
     char get_winner(bool test = true);
     bool is_terminal() override;
     MCTS_state *next_state(MCTS_move *move) override;
-    queue<MCTS_move *> *actions_to_try() override;
+    queue<MCTS_move *> *actions_to_try() const override;
     double rollout() override;                        // the rollout simulation in MCTS
     void print() override;
 };

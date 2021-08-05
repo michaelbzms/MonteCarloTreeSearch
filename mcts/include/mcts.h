@@ -10,6 +10,10 @@
 
 using namespace std;
 
+/** TODOs
+ * - state, move, parent should probably be const
+ */
+
 
 class MCTS_node {
     bool terminal;
@@ -27,12 +31,14 @@ public:
     ~MCTS_node();
     bool is_fully_expanded() const;
     bool is_terminal() const;
+    MCTS_move *get_move() const;
     unsigned int get_size() const;
     void expand();
     void rollout();
     MCTS_node *select_best_child(double c);
     MCTS_node *advance_tree(MCTS_move *move);
-    MCTS_node *
+    const MCTS_state *get_current_state() const;
+
 };
 
 
@@ -46,6 +52,18 @@ public:
     void grow_tree(int max_iter, double max_time_in_seconds);
     void advance_tree(MCTS_move *move);      // if the move is applicable advance the tree, else start over
     unsigned int get_size() const;
+    const MCTS_state *get_current_state() const;
+};
+
+
+class MCTS_agent {
+    MCTS_tree *tree;
+    int max_iter, max_seconds;
+public:
+    MCTS_agent(MCTS_state *starting_state, int max_iter = 100000, int max_seconds = 30);
+    ~MCTS_agent();
+    MCTS_move *genmove(MCTS_move *enemy_move);
+    const MCTS_state *get_current_state() const;
 };
 
 

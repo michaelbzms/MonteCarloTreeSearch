@@ -26,7 +26,7 @@ public:
     virtual double evaluate() {                            // optionally implement this as well (if use_eval_function is true)
         throw std::runtime_error("Not Implemented");
     }
-    virtual queue<MCTS_move *> * actions_to_try() = 0;
+    virtual queue<MCTS_move *> * actions_to_try() const = 0;
     virtual bool is_terminal() = 0;
     virtual void print() {
         cout << "Printing not implemented" << endl;

@@ -65,11 +65,12 @@ MCTS_state *TicTacToe_state::next_state(MCTS_move *move) {
         new_state->change_turn();
     } else {
         cerr << "Warning: Illegal move (" << m->x << ", " << m->y << ")" << endl;
+        return NULL;
     }
     return new_state;
 }
 
-queue<MCTS_move *> *TicTacToe_state::actions_to_try() {
+queue<MCTS_move *> *TicTacToe_state::actions_to_try() const {
     queue<MCTS_move *> *Q = new queue<MCTS_move *>();
     for (int i = 0 ; i < 9 ; i++) {
         if (board[i / 3][i % 3] == ' ') {
@@ -92,9 +93,9 @@ double TicTacToe_state::rollout() {
     long long r;
     int a;
     TicTacToe_state *curstate = this;
-    srand (time(NULL));
+    srand(time(NULL));
     do {
-        if (available.size() <= 0) {
+        if (available.empty()) {
             cerr << "Warning: Ran out of available moves and state is not terminal?";
             return 0.0;
         }
@@ -104,7 +105,7 @@ double TicTacToe_state::rollout() {
         available.erase(available.begin() + r);    // delete from available moves
         curstate = (TicTacToe_state *) curstate->next_state(&move);
     } while (!curstate->is_terminal());
-    curstate->print();   // DEBUG
+    // curstate->print();   // DEBUG
     return (curstate->winner == 'x') ? 1.0 : (curstate->winner == 'd') ? 0.5 : 0.0;
 }
 

@@ -20,6 +20,7 @@ MCTS_node::MCTS_node(MCTS_node *parent, MCTS_state *state, MCTS_move *move)
 }
 
 MCTS_node::~MCTS_node() {
+    delete state;
     delete move;
     for (auto *child : *children) {
         delete child;
@@ -39,7 +40,7 @@ void MCTS_node::expand() {
     }
     // get next untried action
     MCTS_move *next_move = untried_actions->front();     // get value
-    untried_actions->pop();                             // remove it
+    untried_actions->pop();                              // remove it
     MCTS_state *next_state = state->next_state(next_move);
     // build a new MCTS node from it
     MCTS_node *new_node = new MCTS_node(this, next_state, next_move);
@@ -112,7 +113,7 @@ MCTS_node *MCTS_tree::select(double c) {
     return node;
 }
 
-MCTS_tree::MCTS_tree(MCTS_state *starting_state) : root(NULL) {
+MCTS_tree::MCTS_tree(MCTS_state *starting_state) {
     assert(starting_state != NULL);
     root = new MCTS_node(NULL, starting_state, NULL);
 }
@@ -163,14 +164,55 @@ MCTS_node *MCTS_node::advance_tree(MCTS_move *move) {
     if (next == NULL) {
         cout << "INFO: Didn't find child node. Had to start over." << endl;
         MCTS_state *next_state = state->next_state(move);
-        next = new MCTS_node(NULL, next_state, NULL);
+        next = new MCTS_node(NULL, next_state, move);   // Note: keep move in order to delete it later
+    } else {
+        next->parent = NULL;     // make parent NULL
+        delete move;             // if already on the node, delete this
     }
     // return the next root
     return next;
 }
+
+MCTS_move *MCTS_node::get_move() const {
+    return move;
+}
+
+const MCTS_state *MCTS_node::get_current_state() const { return state; }
 
 void MCTS_tree::advance_tree(MCTS_move *move) {
     MCTS_node *old_root = root;
     root = root->advance_tree(move);
     delete old_root;       // this won't delete the new root since we have emptied old_root's children
 }
+
+const MCTS_state *MCTS_tree::get_current_state() const { return root->get_current_state(); }
+
+
+/*** MCTS agent ***/
+MCTS_agent::MCTS_agent(MCTS_state *starting_state, int max_iter, int max_seconds)
+: max_iter(max_iter), max_seconds(max_seconds) {
+    tree = new MCTS_tree(starting_state);
+}
+
+MCTS_move *MCTS_agent::genmove(MCTS_move *enemy_move) {
+    if (enemy_move != NULL) {
+        tree->advance_tree(enemy_move);
+    }
+#ifdef DEBUG
+    cout << "Growing tree..." << endl;
+#endif
+    tree->grow_tree(max_iter, max_seconds);
+#ifdef DEBUG
+    cout << "Tree size: " << tree->get_size() << endl;
+#endif
+    MCTS_node *best_child = tree->select(0.0);
+    MCTS_move *best_move = best_child->get_move();
+    tree->advance_tree(best_move);
+    return best_move;
+}
+
+MCTS_agent::~MCTS_agent() {
+    delete tree;
+}
+
+const MCTS_state *MCTS_agent::get_current_state() const { return tree->get_current_state(); }
