@@ -28,7 +28,7 @@ public:
     }
     virtual queue<MCTS_move *> * actions_to_try() const = 0;
     virtual bool is_terminal() = 0;
-    virtual void print() {
+    virtual void print() const {
         cout << "Printing not implemented" << endl;
     }
 };

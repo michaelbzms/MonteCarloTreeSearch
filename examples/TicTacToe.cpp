@@ -109,7 +109,7 @@ double TicTacToe_state::rollout() {
     return (curstate->winner == 'x') ? 1.0 : (curstate->winner == 'd') ? 0.5 : 0.0;
 }
 
-void TicTacToe_state::print() {
+void TicTacToe_state::print() const {
     printf(" %c | %c | %c\n---+---+---\n %c | %c | %c\n---+---+---\n %c | %c | %c\n",
            board[0][0], board[0][1], board[0][2],
            board[1][0], board[1][1], board[1][2],

@@ -23,7 +23,7 @@ public:
     MCTS_state *next_state(MCTS_move *move) override;
     queue<MCTS_move *> *actions_to_try() const override;
     double rollout() override;                        // the rollout simulation in MCTS
-    void print() override;
+    void print() const override;
 };
 
 
