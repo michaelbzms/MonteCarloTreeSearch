@@ -4,13 +4,8 @@
 #include "../../mcts/include/state.h"
 
 
-// TODO-IDEA: Instead of a FIFO Queue use a Priority Queue
-// with priority on most probable (better) actions to be explored first
-// TODO: or maybe this should just be an iterable and we let the implementation decide!
-
-
 class TicTacToe_state : public MCTS_state {
-    char board[3][3];
+    char board[3][3]{};
     bool player_won(char player) const;
     char calculate_winner() const;
     char turn, winner;
@@ -21,9 +16,9 @@ public:
     char get_turn() const;
     char get_winner() const;
     bool is_terminal() const override;
-    MCTS_state *next_state(MCTS_move *move) const override;
+    MCTS_state *next_state(const MCTS_move *move) const override;
     queue<MCTS_move *> *actions_to_try() const override;
-    double rollout() override;                        // the rollout simulation in MCTS
+    double rollout() const override;                        // the rollout simulation in MCTS
     void print() const override;
 };
 

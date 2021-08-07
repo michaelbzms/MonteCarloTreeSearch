@@ -6,7 +6,7 @@
 using namespace std;
 
 
-TicTacToe_state::TicTacToe_state() : MCTS_state(false), turn('x') {
+TicTacToe_state::TicTacToe_state() : MCTS_state(), turn('x') {
     // initialize board as empty
     for (int i = 0 ; i < 9 ; i++) {
         board[i / 3][i % 3] = ' ';
@@ -16,7 +16,7 @@ TicTacToe_state::TicTacToe_state() : MCTS_state(false), turn('x') {
 }
 
 TicTacToe_state::TicTacToe_state(const TicTacToe_state &other)
-        : MCTS_state(false), turn(other.turn), winner(other.winner) {
+        : MCTS_state(other), turn(other.turn), winner(other.winner) {
     // copy board
     for (int i = 0 ; i < 9 ; i++) {
         board[i / 3][i % 3] = other.board[i / 3][i % 3];
@@ -45,7 +45,7 @@ void TicTacToe_state::change_turn() {
     turn = (turn == 'x') ? 'o' : 'x';
 }
 
-MCTS_state *TicTacToe_state::next_state(MCTS_move *move) const {
+MCTS_state *TicTacToe_state::next_state(const MCTS_move *move) const {
     // Note: We have to manually cast it to its correct type
     TicTacToe_move *m = (TicTacToe_move *) move;
     TicTacToe_state *new_state = new TicTacToe_state(*this);  // create new state from current
@@ -70,7 +70,7 @@ queue<MCTS_move *> *TicTacToe_state::actions_to_try() const {
     return Q;
 }
 
-double TicTacToe_state::rollout() {
+double TicTacToe_state::rollout() const {
     if (is_terminal()) return (winner == 'x') ? 1.0 : (winner == 'd') ? 0.5 : 0.0;
     // Simulate a completely random game
     // Note: dequeue is not very efficient for random accesses but vector is not efficient for deletes
@@ -80,9 +80,10 @@ double TicTacToe_state::rollout() {
             available.push_front(i);
         }
     }
+    // TODO: Forgot to delete intermediate states?
     long long r;
     int a;
-    TicTacToe_state *curstate = this;
+    TicTacToe_state *curstate = (TicTacToe_state *) this;   // TODO: ignore const...
     srand(time(NULL));
     do {
         if (available.empty()) {

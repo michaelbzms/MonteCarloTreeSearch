@@ -11,7 +11,7 @@ using namespace std;
 
 
 /*** MCTS NODE ***/
-MCTS_node::MCTS_node(MCTS_node *parent, MCTS_state *state, MCTS_move *move)
+MCTS_node::MCTS_node(MCTS_node *parent, MCTS_state *state, const MCTS_move *move)
         : parent(parent), state(state), move(move), score(0.0), number_of_simulations(0), size(0) {
     children = new vector<MCTS_node *>();
     children->reserve(STARTING_NUMBER_OF_CHILDREN);
@@ -102,7 +102,7 @@ MCTS_node *MCTS_node::select_best_child(double c) const {
     }
 }
 
-MCTS_node *MCTS_node::advance_tree(MCTS_move *m) {
+MCTS_node *MCTS_node::advance_tree(const MCTS_move *m) {
     // Find child with this m and delete all others
     MCTS_node *next = NULL;
     for (auto *child: *children) {
@@ -178,7 +178,7 @@ unsigned int MCTS_tree::get_size() const {
     return root->get_size();
 }
 
-MCTS_move *MCTS_node::get_move() const {
+const MCTS_move *MCTS_node::get_move() const {
     return move;
 }
 
@@ -193,7 +193,7 @@ void MCTS_node::print_stats() const {
     cout << "________________________________" << endl;
 }
 
-void MCTS_tree::advance_tree(MCTS_move *move) {
+void MCTS_tree::advance_tree(const MCTS_move *move) {
     MCTS_node *old_root = root;
     root = root->advance_tree(move);
     delete old_root;       // this won't delete the new root since we have emptied old_root's children
@@ -214,7 +214,7 @@ MCTS_agent::MCTS_agent(MCTS_state *starting_state, int max_iter, int max_seconds
     tree = new MCTS_tree(starting_state);
 }
 
-MCTS_move *MCTS_agent::genmove(MCTS_move *enemy_move) {
+const MCTS_move *MCTS_agent::genmove(const MCTS_move *enemy_move) {
     if (enemy_move != NULL) {
         tree->advance_tree(enemy_move);
     }
@@ -236,7 +236,7 @@ MCTS_move *MCTS_agent::genmove(MCTS_move *enemy_move) {
         cerr << "Warning: Tree root has no children! Possibly terminal node!" << endl;
         return NULL;
     }
-    MCTS_move *best_move = best_child->get_move();
+    const MCTS_move *best_move = best_child->get_move();
     tree->advance_tree(best_move);
     return best_move;
 }
