@@ -15,6 +15,8 @@ using namespace std;
  * - state should probably be const
  * - Instead of a FIFO Queue use a Priority Queue with priority on most probable (better) actions to be explored first
   or maybe this should just be an iterable and we let the implementation decide but these have no superclasses in C++ it seems
+ * - vectors, queues and these structures allocate data on the heap anyway so there is little point in using the heap for them
+ * so use stack instead?
  */
 
 

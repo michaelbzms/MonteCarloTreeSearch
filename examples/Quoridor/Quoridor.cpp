@@ -6,7 +6,7 @@ using namespace std;
 
 
 Quoridor_state::Quoridor_state()
-    : wx(4), wy(0), bx(4), by(8), wwallsno(10), bwallsno(10), turn('W') {
+    : wx(0), wy(4), bx(8), by(4), wwallsno(10), bwallsno(10), turn('W'), wdists(NULL), bdists(NULL) {
     for (int i = 0 ; i < 64 ; i++) {
         walls[i / 8][i % 8] = ' ';
         wall_connections[i / 8][i % 8] = false;
@@ -15,17 +15,111 @@ Quoridor_state::Quoridor_state()
 
 Quoridor_state::Quoridor_state(const Quoridor_state &other)
     : wx(other.wx), wy(other.wy), bx(other.bx), by(other.by),
-      wwallsno(other.wwallsno), bwallsno(other.bwallsno), turn(other.turn) {
+      wwallsno(other.wwallsno), bwallsno(other.bwallsno), turn(other.turn),
+      wdists(NULL), bdists(NULL) {    // TODO: Is it cheaper to copy dists than to potentially recalculate them?
     for (int i = 0 ; i < 64 ; i++) {
         walls[i / 8][i % 8] = other.walls[i / 8][i % 8];
         wall_connections[i / 8][i % 8] = other.wall_connections[i / 8][i % 8];
     }
 }
 
+Quoridor_state::~Quoridor_state() {
+    reset_dists(wdists);
+    reset_dists(bdists);
+}
+
 char Quoridor_state::check_winner() const {
-    if (wy == 8) return 'W';
-    if (by == 0) return 'B';
+    if (wx == 8) return 'W';
+    if (bx == 0) return 'B';
     return ' ';
+}
+
+short int **Quoridor_state::calculate_dists_from(short int x, short int y) {
+    // allocate space for result
+    short int **dists = new short int *[9];
+    for (int i = 0 ; i < 9 ; i++) {
+        dists[i] = new short int[9];
+        for (int j = 0 ; j < 9 ; j++) {
+            dists[i][j] = -1;   // < 0 signifies unreachable squares
+        }
+    }
+    // perform bfs on the board
+    struct Node {
+        short int x, y;
+        int dist;
+        Node(short int x, short int y, int dist) : x(x), y(y), dist(dist) {}
+        bool operator==(const Node& other) const { return x == other.x && y == other.y; }
+    };
+    queue<Node> Q;
+    Q.push(Node(x, y, 0));       // TODO: does this work? Like allocate to stack?
+    dists[x][y] = 0;
+    while(!Q.empty()) {
+        // get new node
+        Node n = Q.front();
+        Q.pop();
+        // add neighbours to queue if not already explored
+        if (n.x - 1 >= 0 && !horizontal_wall(n.x - 1, n.y) && dists[n.x - 1][n.y] < 0) {          // up
+            dists[n.x - 1][n.y] = n.dist + 1;
+            Q.push(Node(n.x - 1, n.y, n.dist + 1));
+        }
+        if (n.x + 1 < 9 && !horizontal_wall(n.x, n.y) && dists[n.x + 1][n.y] < 0) {                  // down
+            dists[n.x + 1][n.y] = n.dist + 1;
+            Q.push(Node(n.x + 1, n.y, n.dist + 1));
+        }
+        if (n.y - 1 >= 0 && !horizontal_wall(n.x, n.y - 1) && dists[n.x][n.y - 1] < 0) {          // left
+            dists[n.x][n.y - 1] = n.dist + 1;
+            Q.push(Node(n.x, n.y - 1, n.dist + 1));
+        }
+        if (n.y + 1 < 9 && !horizontal_wall(n.x, n.y)  && dists[n.x][n.y + 1] < 0) {                 // right
+            dists[n.x][n.y + 1] = n.dist + 1;
+            Q.push(Node(n.x, n.y + 1, n.dist + 1));
+        }
+    }
+    return dists;
+}
+
+int Quoridor_state::get_shortest_path(char player) {
+    if (player == 'W') {
+        // if not already calculated on a previous call
+        if (wdists == NULL) {
+            // calculate dists to every square using BFS (expensive)
+            wdists = calculate_dists_from(wx, wy);
+        }
+        // scan the end-zone and keep the minimum
+        int min = 9999999;
+        for (int i = 0 ; i < 9 ; i++) {
+            if (wdists[8][i] >= 0 && wdists[8][i] < min) {
+                min = wdists[8][i];
+            }
+        }
+        return min;
+    } else if (player == 'B') {
+        // if not already calculated on a previous call
+        if (bdists == NULL) {
+            // calculate dists to every square using BFS (expensive)
+            bdists = calculate_dists_from(bx, by);
+        }
+        // scan the end-zone and keep the minimum
+        int min = 9999999;
+        for (int i = 0 ; i < 9 ; i++) {
+            if (bdists[0][i] >= 0 && bdists[0][i] < min) {
+                min = bdists[0][i];
+            }
+        }
+        return min;
+    } else {
+        cerr << "Invalid player arg" << endl;
+        return -1;
+    }
+}
+
+void Quoridor_state::reset_dists(short int **&dists) {
+    if (dists == NULL) return;
+    for (int i = 0 ; i < 9 ; i++) {
+        delete[] dists[i];
+    }
+    delete[] dists;
+    dists = NULL;   // (!) has to change that's why we use a reference
 }
 
 void Quoridor_state::add_wall(short int x, short int y, bool horizontal) {
@@ -83,16 +177,23 @@ void Quoridor_state::play_move(const Quoridor_move *move) {
                 bwallsno--;
                 break;
         }
+        // reset all dists
+        reset_dists(wdists);
+        reset_dists(bdists);
     } else {                                        // pawn move
         // play legal move
         switch (move->player) {
             case 'W':
                 wx = move->x;
                 wy = move->y;
+                // reset his dists
+                reset_dists(wdists);
                 break;
             case 'B':
                 bx = move->x;
                 by = move->y;
+                // reset his dists
+                reset_dists(bdists);
                 break;
         }
     }

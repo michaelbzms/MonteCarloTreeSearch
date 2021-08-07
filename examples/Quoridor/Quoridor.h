@@ -31,17 +31,27 @@ class Quoridor_state : public MCTS_state {
     bool wall_connections[8][8]{};    // TODO: can be a bitmap to save up space (bools are 1 byte = 8 bits)
     /** Whose turn it is to play: 'W' or 'B' */
     char turn;
+    /** Keep track of the distance from each player to each square while
+     * taking account for any walls */
+    short int **wdists;
+    short int **bdists;
     //////////////////////////////////////////
     char change_turn() { turn = (turn == 'W') ? 'B' : 'W'; return turn; }
+    bool horizontal_wall(short int x, short int y){ return walls[x][y] == 'h' || walls[x][y] == 'b'; }
+    bool vertical_wall(short int x, short int y){ return walls[x][y] == 'v' || walls[x][y] == 'b'; }
     void add_wall(short int x, short int y, bool horizontal);
     bool legal_step(short int x, short int y, char p) const;
     bool legal_wall(short int x, short int y, char p, bool horizontal) const;
+    short int **calculate_dists_from(short int x, short int y);
+    static void reset_dists(short int **&dists);
 public:
     Quoridor_state();
     Quoridor_state(const Quoridor_state &other);
+    ~Quoridor_state() override;
     char check_winner() const;
     bool legal_move(const Quoridor_move *move) const;
     void play_move(const Quoridor_move *move);
+    int get_shortest_path(char player);
     /** Overrides: */
     bool is_terminal() const override;
     MCTS_state *next_state(const MCTS_move *move) const override;
