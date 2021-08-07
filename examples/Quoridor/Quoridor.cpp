@@ -7,9 +7,9 @@ using namespace std;
 
 Quoridor_state::Quoridor_state()
     : wx(0), wy(4), bx(8), by(4), wwallsno(10), bwallsno(10), turn('W'), wdists(NULL), bdists(NULL) {
-    for (int i = 0 ; i < 64 ; i++) {
-        walls[i / 8][i % 8] = ' ';
-        wall_connections[i / 8][i % 8] = false;
+    for (int i = 0 ; i < 81 ; i++) {
+        walls[i / 9][i % 9] = ' ';
+        if (i < 64) wall_connections[i / 8][i % 8] = false;
     }
 }
 
@@ -17,9 +17,9 @@ Quoridor_state::Quoridor_state(const Quoridor_state &other)
     : wx(other.wx), wy(other.wy), bx(other.bx), by(other.by),
       wwallsno(other.wwallsno), bwallsno(other.bwallsno), turn(other.turn),
       wdists(NULL), bdists(NULL) {    // TODO: Is it cheaper to copy dists than to potentially recalculate them?
-    for (int i = 0 ; i < 64 ; i++) {
-        walls[i / 8][i % 8] = other.walls[i / 8][i % 8];
-        wall_connections[i / 8][i % 8] = other.wall_connections[i / 8][i % 8];
+    for (int i = 0 ; i < 81 ; i++) {
+        walls[i / 9][i % 9] = other.walls[i / 8][i % 8];
+        if (i < 64) wall_connections[i / 8][i % 8] = other.wall_connections[i / 8][i % 8];
     }
 }
 
@@ -126,9 +126,14 @@ void Quoridor_state::add_wall(short int x, short int y, bool horizontal) {
     char put = horizontal ? 'h' : 'v', other = horizontal ? 'v' : 'h';
     if (walls[x][y] == ' ') walls[x][y] = put;
     else if (walls[x][y] == other) walls[x][y] = 'b';
-    else {
-        cerr << "Warning: Illegal wall let through!" << endl;   // should not happen
-    }
+    else { cerr << "Warning: Illegal wall let through!" << endl; }   // should not happen
+}
+
+void Quoridor_state::remove_wall(short x, short y, bool horizontal) {
+    char put = horizontal ? 'h' : 'v', other = horizontal ? 'v' : 'h';
+    if (walls[x][y] == put) walls[x][y] = ' ';
+    else if (walls[x][y] == 'b') walls[x][y] = other;
+    else { cerr << "Warning: Illegal wall let through!" << endl; }   // should not happen
 }
 
 bool Quoridor_state::legal_step(short int x, short int y, char p) const {
@@ -201,12 +206,44 @@ bool Quoridor_state::legal_step(short int x, short int y, char p) const {
     return false;
 }
 
-bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizontal) const {
-    // TODO
-    return false;
+bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizontal) {
+    // TODO: Double-check
+    // check out-of-bounds
+    if (x < 0 || y < 0 || x >= 8 || y >= 8) return false;
+    // check if out of walls
+    if (p == 'W' && wwallsno <= 0) return false;
+    if (p == 'B' && bwallsno <= 0) return false;
+    // check if blocked by the same wall or by an opposite wall at the same exact spot
+    char type = (horizontal) ? 'h' : 'v';
+    char opposite_type = (horizontal) ? 'v' : 'h';
+    if (walls[x][y] == type || walls[x][y] == 'b' || (walls[x][y] == opposite_type && wall_connections[x][y])) return false;
+    // check if the second part of the wall is blocked
+    if (horizontal && horizontal_wall(x + 1, y)) return false;
+    if (!horizontal && vertical_wall(x, y + 1)) return false;
+    // check if playing this wall blocks a pawn's path (expensive, avoid when possible)
+    if (20 - wwallsno - bwallsno >= 5) {      // (!) there need to be played at least 5 walls already for this to be possible
+        bool blocked = false;
+        // temporarily play wall
+        add_wall(x, y, horizontal);
+        add_wall(x +  ((int) horizontal), y + ((int) !horizontal), horizontal);
+        // check if any pawn is blocked
+        int white_path = get_shortest_path('W');
+        if (white_path < 0) blocked = true;                  // white is blocked
+        if (!blocked) {
+            int black_path = get_shortest_path('B');
+            if (black_path < 0) blocked = true;       // black is blocked
+        }
+        // un-play wall
+        remove_wall(x, y, horizontal);
+        remove_wall(x +  ((int) horizontal), y + ((int) !horizontal), horizontal);
+        // if any of the two pawns was blocked return false
+        if (blocked) return false;
+    }
+    // if passed all the checks, it's legal
+    return true;
 }
 
-bool Quoridor_state::legal_move(const Quoridor_move *move) const {
+bool Quoridor_state::legal_move(const Quoridor_move *move) {
     if (move == NULL) return false;
     if (move->player != 'W' && move->player != 'B'){
         cerr << "Warning: wrong player argument!" << endl;

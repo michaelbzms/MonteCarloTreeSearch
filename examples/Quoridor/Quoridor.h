@@ -27,7 +27,7 @@ class Quoridor_state : public MCTS_state {
     short int wwallsno, bwallsno;
     /** Effectively a look-up table:
      * ' ', 'h', 'v', 'b' for empty, horizontal, vertical and both walls in the right and bottom part of a cell */
-    char walls[8][8]{};
+    char walls[9][9]{};
     bool wall_connections[8][8]{};    // TODO: can be a bitmap to save up space (bools are 1 byte = 8 bits)
     /** Whose turn it is to play: 'W' or 'B' */
     char turn;
@@ -40,8 +40,9 @@ class Quoridor_state : public MCTS_state {
     bool horizontal_wall(short int x, short int y) const { return walls[x][y] == 'h' || walls[x][y] == 'b'; }
     bool vertical_wall(short int x, short int y) const { return walls[x][y] == 'v' || walls[x][y] == 'b'; }
     void add_wall(short int x, short int y, bool horizontal);
+    void remove_wall(short int x, short int y, bool horizontal);
     bool legal_step(short int x, short int y, char p) const;
-    bool legal_wall(short int x, short int y, char p, bool horizontal) const;
+    bool legal_wall(short int x, short int y, char p, bool horizontal);
     short int **calculate_dists_from(short int x, short int y);
     static void reset_dists(short int **&dists);
 public:
@@ -49,7 +50,7 @@ public:
     Quoridor_state(const Quoridor_state &other);
     ~Quoridor_state() override;
     char check_winner() const;
-    bool legal_move(const Quoridor_move *move) const;
+    bool legal_move(const Quoridor_move *move);
     void play_move(const Quoridor_move *move);
     int get_shortest_path(char player);
     /** Overrides: */
