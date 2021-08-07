@@ -7,45 +7,28 @@ MCTS_move *select_random_move(const MCTS_state *state);
 
 
 int main() {
-//    MCTS_state *state = new TicTacToe_state();
-//    state = state->next_state(new TicTacToe_move(0, 0, 'x'))
-//        ->next_state(new TicTacToe_move(0, 1, 'x'))
-//        ->next_state(new TicTacToe_move(1, 0, 'x'))
-//        ->next_state(new TicTacToe_move(1, 1, 'x'))
-//        ->next_state(new TicTacToe_move(2, 0, 'o'))
-//        ->next_state(new TicTacToe_move(2, 1, 'o'))
-//        ->next_state(new TicTacToe_move(0, 2, 'o'))
-//        ->next_state(new TicTacToe_move(1, 2, 'o'))
-//        ->next_state(new TicTacToe_move(2, 2, 'o'));
-//    state->print();
-//    cout << "Terminal: " << state->is_terminal() << endl;
-
-
-//    TicTacToe_state state;
-//    state.print();
-//    TicTacToe_move move(0, 0, 'x');
-//    MCTS_state *next_state = state.next_state(&move);
-//    next_state->print();
-////    queue<MCTS_move *> *actions = next_state->actions_to_try();
-//    double res = next_state->rollout();
-//    cout << "Rollout result: " << res << endl;
-//    delete next_state;
-
-
-    MCTS_state *state = new TicTacToe_state(), *new_state;
-    state->print();   // IMPORTANT: state will be garbage after advance_tree()
-    MCTS_agent agent(state, 10000);
+    // This is just to test the example, not ideally what one should be doing... TODO
+    bool done;
+    char winner;
+    MCTS_state *state = new TicTacToe_state();
+    state->print();                           // IMPORTANT: state will be garbage after advance_tree()
+    MCTS_agent agent(state, 1000);
     MCTS_move *enemy_move = NULL;
     do {
         agent.feedback();
         // TODO: This way we don't check if the enemy move ends the game but it's our responsibility to check that, not the tree's...
         agent.genmove(enemy_move);   // Note: we ignore the move because the MCTS tree has played it as well and we can get it from there.
-        new_state = (MCTS_state *) agent.get_current_state();   // TODO: remove casting, fix const...
+        const MCTS_state *new_state = agent.get_current_state();
         new_state->print();
-        if (new_state->is_terminal()) break;
+        if (new_state->is_terminal()) {
+            winner = ((const TicTacToe_state *) new_state)->get_winner();
+            break;
+        }
         enemy_move = select_random_move(new_state);
-    } while (!new_state->is_terminal());
-
+        done = new_state->is_terminal();
+        winner = ((const TicTacToe_state *) new_state)->get_winner();
+    } while (!done);
+    cout << "\nWinner is: " << winner << endl;
     return 0;
 }
 

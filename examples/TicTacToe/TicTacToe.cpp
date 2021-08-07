@@ -6,11 +6,13 @@
 using namespace std;
 
 
-TicTacToe_state::TicTacToe_state() : MCTS_state(false), turn('x'), winner(' ') {
+TicTacToe_state::TicTacToe_state() : MCTS_state(false), turn('x') {
     // initialize board as empty
     for (int i = 0 ; i < 9 ; i++) {
         board[i / 3][i % 3] = ' ';
     }
+    // calculate winner
+    winner = calculate_winner();
 }
 
 TicTacToe_state::TicTacToe_state(const TicTacToe_state &other)
@@ -21,7 +23,7 @@ TicTacToe_state::TicTacToe_state(const TicTacToe_state &other)
     }
 }
 
-bool TicTacToe_state::player_won(char player) {
+bool TicTacToe_state::player_won(char player) const {
     if (player != 'x' and player != 'o') cerr << "Warning: check winner for unknown player" << endl;
     for (int i = 0 ; i < 3 ; i++) {
         if (board[i][0] == player && board[i][1] == player && board[i][2] == player) return true;
@@ -31,26 +33,13 @@ bool TicTacToe_state::player_won(char player) {
            (board[0][2] == player && board[1][1] == player && board[2][0] == player);
 }
 
-bool TicTacToe_state::is_terminal() {
-    if (player_won('x')) {
-        winner = 'x';
-        return true;
-    } else if (player_won('o')) {
-        winner = 'o';
-        return true;
-    }
-    bool all_taken = true;
-    for (int i = 0 ; i < 9 ; i++) {
-        if (board[i / 3][i % 3] == ' ') {
-            all_taken = false;
-            break;
-        }
-    }
-    if (all_taken) winner = 'd';   // draw
-    return all_taken;
+bool TicTacToe_state::is_terminal() const {
+    return winner != ' ';
 }
 
 char TicTacToe_state::get_turn() const { return turn; }
+
+char TicTacToe_state::get_winner() const { return winner; }
 
 void TicTacToe_state::change_turn() {
     turn = (turn == 'x') ? 'o' : 'x';
@@ -62,6 +51,7 @@ MCTS_state *TicTacToe_state::next_state(MCTS_move *move) const {
     TicTacToe_state *new_state = new TicTacToe_state(*this);  // create new state from current
     if (new_state->board[m->x][m->y] == ' ') {
         new_state->board[m->x][m->y] = m->player;             // play move
+        new_state->winner = new_state->calculate_winner();    // check again for a winner
         new_state->change_turn();
     } else {
         cerr << "Warning: Illegal move (" << m->x << ", " << m->y << ")" << endl;
@@ -115,12 +105,21 @@ void TicTacToe_state::print() const {
            board[2][0], board[2][1], board[2][2]);
 }
 
-char TicTacToe_state::get_winner(bool test) {
-    if (test) is_terminal();
-    return winner;
+char TicTacToe_state::calculate_winner() const {
+    if (player_won('x')) return 'x';
+    else if (player_won('o')) return 'o';
+    bool all_taken = true;
+    for (int i = 0 ; i < 9 ; i++) {
+        if (board[i / 3][i % 3] == ' ') {
+            all_taken = false;
+            break;
+        }
+    }
+    if (all_taken) return 'd';   // draw
+    else return ' ';             // no-one yet
 }
 
 bool TicTacToe_move::operator==(const MCTS_move &other) const {
-    const TicTacToe_move &o = (const TicTacToe_move &) other;        // TODO: Casting necessary
+    const TicTacToe_move &o = (const TicTacToe_move &) other;        // Note: Casting necessary
     return x == o.x && y == o.y && player == o.player;
 }

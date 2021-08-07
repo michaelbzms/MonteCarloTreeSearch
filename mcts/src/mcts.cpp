@@ -5,7 +5,6 @@
 #include "../include/mcts.h"
 
 #define DEBUG
-#define MAX_ATTEMPTS_TO_FIX_EMPTY_NODE 3
 
 
 using namespace std;
@@ -220,9 +219,7 @@ MCTS_move *MCTS_agent::genmove(MCTS_move *enemy_move) {
         tree->advance_tree(enemy_move);
     }
     // If game ended from opponent move, we can't do anything
-    if (((MCTS_state *) tree->get_current_state())->is_terminal()) {
-        // TODO: Bypass non-const errors by casting. This is bad but necessary? We need is_terminal non const to keep the winner result the first time he is computed for a state (and not recompute it every time).
-        // TODO: compute it once in the constructor!
+    if (tree->get_current_state()->is_terminal()) {
         return NULL;
     }
     #ifdef DEBUG
