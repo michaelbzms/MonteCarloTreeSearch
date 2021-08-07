@@ -187,6 +187,8 @@ const MCTS_state *MCTS_node::get_current_state() const { return state; }
 void MCTS_node::print_stats() const {
     if (number_of_simulations == 0) return;
     cout << "___ INFO _______________________" << endl
+         << "Tree size: " << size << endl
+         << "Number of simulations: " << number_of_simulations << endl
          << "Chances of winning: " << setprecision(4) << 100.0 * (score / number_of_simulations) << "%" << endl;
     cout << "________________________________" << endl;
 }
