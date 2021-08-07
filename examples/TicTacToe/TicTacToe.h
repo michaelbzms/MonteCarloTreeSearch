@@ -1,7 +1,7 @@
 #ifndef MCTS_TICTACTOE_H
 #define MCTS_TICTACTOE_H
 
-#include "../mcts/include/state.h"
+#include "../../mcts/include/state.h"
 
 
 // TODO-IDEA: Instead of a FIFO Queue use a Priority Queue

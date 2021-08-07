@@ -5,6 +5,7 @@
 #include "../include/mcts.h"
 
 #define DEBUG
+#define MAX_ATTEMPTS_TO_FIX_EMPTY_NODE 3
 
 
 using namespace std;
@@ -102,6 +103,33 @@ MCTS_node *MCTS_node::select_best_child(double c) const {
     }
 }
 
+MCTS_node *MCTS_node::advance_tree(MCTS_move *m) {
+    // Find child with this m and delete all others
+    MCTS_node *next = NULL;
+    for (auto *child: *children) {
+        if (*(child->move) == *(m)) {
+            next = child;
+        } else {
+            delete child;
+        }
+    }
+    // remove children from queue so that they won't be re-deleted by the destructor when this node dies (!)
+    this->children->clear();
+    // if not found then we have to create a new node
+    if (next == NULL) {
+        // Note: UCT may lead to not fully explored tree even for short-term children due to terminal nodes being chosen
+        cout << "INFO: Didn't find child node. Had to start over." << endl;
+        MCTS_state *next_state = state->next_state(m);
+        next = new MCTS_node(NULL, next_state, NULL);
+    } else {
+        next->parent = NULL;     // make parent NULL
+        // IMPORTANT: m and next->move can be the same here if we pass the move from select_best_child()
+        // (which is what we will typically be doing). If not then it's the caller's responsibility to delete m (!)
+    }
+    // return the next root
+    return next;
+}
+
 
 /*** MCTS TREE ***/
 MCTS_node *MCTS_tree::select(double c) {
@@ -151,33 +179,6 @@ unsigned int MCTS_tree::get_size() const {
     return root->get_size();
 }
 
-MCTS_node *MCTS_node::advance_tree(MCTS_move *m) {
-    // Find child with this m and delete all others
-    MCTS_node *next = NULL;
-    for (auto *child: *children) {
-        if (*(child->move) == *(m)) {
-            next = child;
-        } else {
-            delete child;
-        }
-    }
-    // remove children from queue so that they won't be re-deleted by the destructor when this node dies (!)
-    this->children->clear();
-    // if not found then we have to create a new node
-    if (next == NULL) {
-        // Note: UCT may lead to not fully explored tree even for short-term children due to terminal nodes being chosen
-        cout << "INFO: Didn't find child node. Had to start over." << endl;
-        MCTS_state *next_state = state->next_state(m);
-        next = new MCTS_node(NULL, next_state, NULL);
-    } else {
-        next->parent = NULL;     // make parent NULL
-        // IMPORTANT: m and next->move can be the same here if we pass the move from select_best_child()
-        // (which is what we will typically be doing). If not then it's the caller's responsibility to delete m (!)
-    }
-    // return the next root
-    return next;
-}
-
 MCTS_move *MCTS_node::get_move() const {
     return move;
 }
@@ -218,6 +219,12 @@ MCTS_move *MCTS_agent::genmove(MCTS_move *enemy_move) {
     if (enemy_move != NULL) {
         tree->advance_tree(enemy_move);
     }
+    // If game ended from opponent move, we can't do anything
+    if (((MCTS_state *) tree->get_current_state())->is_terminal()) {
+        // TODO: Bypass non-const errors by casting. This is bad but necessary? We need is_terminal non const to keep the winner result the first time he is computed for a state (and not recompute it every time).
+        // TODO: compute it once in the constructor!
+        return NULL;
+    }
     #ifdef DEBUG
     cout << "___ DEBUG ______________________" << endl
          << "Growing tree..." << endl;
@@ -228,6 +235,10 @@ MCTS_move *MCTS_agent::genmove(MCTS_move *enemy_move) {
          << "________________________________" << endl;
     #endif
     MCTS_node *best_child = tree->select_best_child();
+    if (best_child == NULL) {
+        cerr << "Warning: Tree root has no children! Possibly terminal node!" << endl;
+        return NULL;
+    }
     MCTS_move *best_move = best_child->get_move();
     tree->advance_tree(best_move);
     return best_move;

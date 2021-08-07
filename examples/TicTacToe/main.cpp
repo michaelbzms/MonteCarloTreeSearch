@@ -1,6 +1,6 @@
 #include <iostream>
-#include "examples/TicTacToe.h"
-#include "mcts/include/mcts.h"
+#include "TicTacToe.h"
+#include "../../mcts/include/mcts.h"
 
 
 MCTS_move *select_random_move(const MCTS_state *state);
@@ -38,7 +38,8 @@ int main() {
     MCTS_move *enemy_move = NULL;
     do {
         agent.feedback();
-        agent.genmove(enemy_move);
+        // TODO: This way we don't check if the enemy move ends the game but it's our responsibility to check that, not the tree's...
+        agent.genmove(enemy_move);   // Note: we ignore the move because the MCTS tree has played it as well and we can get it from there.
         new_state = (MCTS_state *) agent.get_current_state();   // TODO: remove casting, fix const...
         new_state->print();
         if (new_state->is_terminal()) break;
