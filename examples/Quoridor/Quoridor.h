@@ -37,8 +37,8 @@ class Quoridor_state : public MCTS_state {
     short int **bdists;
     //////////////////////////////////////////
     char change_turn() { turn = (turn == 'W') ? 'B' : 'W'; return turn; }
-    bool horizontal_wall(short int x, short int y){ return walls[x][y] == 'h' || walls[x][y] == 'b'; }
-    bool vertical_wall(short int x, short int y){ return walls[x][y] == 'v' || walls[x][y] == 'b'; }
+    bool horizontal_wall(short int x, short int y) const { return walls[x][y] == 'h' || walls[x][y] == 'b'; }
+    bool vertical_wall(short int x, short int y) const { return walls[x][y] == 'v' || walls[x][y] == 'b'; }
     void add_wall(short int x, short int y, bool horizontal);
     bool legal_step(short int x, short int y, char p) const;
     bool legal_wall(short int x, short int y, char p, bool horizontal) const;

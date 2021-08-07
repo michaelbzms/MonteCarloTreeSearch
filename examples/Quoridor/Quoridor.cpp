@@ -132,7 +132,72 @@ void Quoridor_state::add_wall(short int x, short int y, bool horizontal) {
 }
 
 bool Quoridor_state::legal_step(short int x, short int y, char p) const {
-    // TODO
+    // TODO: Double Check
+    // check if move falls into an occupied square
+    if ((x == bx && y == by) || (x == wx && y == wy)) return false;
+    // determine two player's pos
+    short int posx, posy, enemy_posx, enemy_posy;
+    if (p == 'W') {
+        posx = wx;
+        posy = wy;
+        enemy_posx = bx;
+        enemy_posy = by;
+    } else if (p == 'B') {
+        posx = bx;
+        posy = by;
+        enemy_posx = wx;
+        enemy_posy = wy;
+    } else return false;
+    // check all possible legal moves one-by-one
+    if (y == posy) {
+        if (x >= 0 && !horizontal_wall(posx - 1, posy)) {
+            if (x == posx - 1) return true;                                     // up
+            if (x == posx - 2 && !horizontal_wall(posx - 2, posy) &&
+                enemy_posy == posy && enemy_posx == posx - 1) return true;      // up-up
+        }
+        if (x < 9 && !horizontal_wall(posx, posy)) {
+            if (x == posx + 1) return true;                                     // down
+            if (x == posx + 2 && !horizontal_wall(posx + 1, posy) &&
+                enemy_posy == posy && enemy_posx == posx + 1) return true;      // down-down
+        }
+    }
+    if (x == posx) {
+        if (y >= 0 && !vertical_wall(posx, posy - 1)) {
+            if (y == posy - 1) return true;                                     // left
+            if (y == posy - 2 && !vertical_wall(posx, posy - 2) &&
+                enemy_posx == posx && enemy_posy == posy - 1) return true;      // left-left
+        }
+        if (y < 9 && !vertical_wall(posx, posy)) {
+            if (y == posy + 1) return true;                                     // right
+            if (y == posy + 2 && !vertical_wall(posx, posy + 1) &&
+                enemy_posx == posx && enemy_posy == posy + 1) return true;      // right-right
+        }
+    }
+    // check diagonal moves
+    if (x >= 0 && y >= 0 && x == posx - 1 && y == posy - 1) {                   // up-left
+        if (enemy_posx == posx - 1 && enemy_posy == posy &&
+            (posx - 2 < 0 || horizontal_wall(posx - 2, posy))) return true;
+        if (enemy_posx == posx && enemy_posy == posy - 1 &&
+            (posy - 2 < 0 || vertical_wall(posx, posy - 2))) return true;
+    }
+    if (x >= 0 && y < 9 && x == posx - 1 && y == posy + 1) {                    // up-right
+        if (enemy_posx == posx - 1 && enemy_posy == posy &&
+            (posx - 2 < 0 || horizontal_wall(posx - 2, posy))) return true;
+        if (enemy_posx == posx && enemy_posy == posy + 1 &&
+            (posy + 2 >= 9 || vertical_wall(posx, posy + 1))) return true;
+    }
+    if (x < 9 && y >= 0 && x == posx + 1 && y == posy - 1) {                   // down-left
+        if (enemy_posx == posx + 1 && enemy_posy == posy &&
+            (posx + 2 >= 9 || horizontal_wall(posx + 1, posy))) return true;
+        if (enemy_posx == posx && enemy_posy == posy - 1 &&
+            (posy - 2 < 0 || vertical_wall(posx, posy - 2))) return true;
+    }
+    if (x < 9 && y < 9 && x == posx + 1 && y == posy + 1) {                   // down-right
+        if (enemy_posx == posx + 1 && enemy_posy == posy &&
+            (posx + 2 >= 9 || horizontal_wall(posx + 1, posy))) return true;
+        if (enemy_posx == posx && enemy_posy == posy + 1 &&
+            (posy + 2 >= 9 || vertical_wall(posx, posy + 1))) return true;
+    }
     return false;
 }
 
