@@ -80,11 +80,11 @@ double TicTacToe_state::rollout() const {
             available.push_front(i);
         }
     }
-    // TODO: Forgot to delete intermediate states?
     long long r;
     int a;
     TicTacToe_state *curstate = (TicTacToe_state *) this;   // TODO: ignore const...
     srand(time(NULL));
+    bool first = true;
     do {
         if (available.empty()) {
             cerr << "Warning: Ran out of available moves and state is not terminal?";
@@ -94,9 +94,16 @@ double TicTacToe_state::rollout() const {
         a = available[r];
         TicTacToe_move move(a / 3, a % 3, curstate->turn);
         available.erase(available.begin() + r);    // delete from available moves
+        TicTacToe_state *old = curstate;
         curstate = (TicTacToe_state *) curstate->next_state(&move);
+        if (!first) {
+            delete old;
+        }
+        first = false;
     } while (!curstate->is_terminal());
-    return (curstate->winner == 'x') ? 1.0 : (curstate->winner == 'd') ? 0.5 : 0.0;
+    double res = (curstate->winner == 'x') ? 1.0 : (curstate->winner == 'd') ? 0.5 : 0.0;
+    delete curstate;
+    return res;
 }
 
 void TicTacToe_state::print() const {

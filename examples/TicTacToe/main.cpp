@@ -28,6 +28,7 @@ int main() {
         done = new_state->is_terminal();
         winner = ((const TicTacToe_state *) new_state)->get_winner();
     } while (!done);
+    delete enemy_move;
     cout << "\nWinner is: " << winner << endl;
     return 0;
 }
@@ -39,15 +40,16 @@ MCTS_move *select_random_move(const MCTS_state *state){
     int r = rand() % actions->size();
     while ((r--) > 0) {
         m = actions->front();
-        actions->pop();
         delete m;
+        actions->pop();
     }
     move = actions->front();
     actions->pop();
     while (!actions->empty()) {
         m = actions->front();
-        actions->pop();
         delete m;
+        actions->pop();
     }
+    delete actions;
     return move;
 }
