@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include "Quoridor.h"
 
 
@@ -332,7 +333,42 @@ double Quoridor_state::rollout() const {
 }
 
 void Quoridor_state::print() const {
-    // TODO
-    MCTS_state::print();
+    #define VWALL ((char) 186)
+    #define BOTH ((char) 206)
+    cout << endl << "  ";
+    for (int i = 0 ; i < 9 ; i++) {
+        cout << "     " << (char) ('A' + i);
+    }
+    cout << endl << "    +";
+    for (int i = 0 ; i < 9 ; i++) {
+        cout << "-----+";
+    }
+    cout << endl;
+    for (int row = 0 ; row < 9 ; row++) {
+        printf(" %d  |", row+1);
+        for (int col = 0 ; col < 9 ; col++) {
+            printf("  %c  %c",
+                   (bx == row && by == col) ? 'B' : (wx == row && wy == col) ? 'W' : ' ',
+                   (vertical_wall(row, col) ? VWALL : '|'));
+        }
+        printf("  %d", row+1);
+        // print wall counts
+        if (row < 2) {
+            printf("     %s walls: %d", (row == 0) ? "White" : "Black", (row == 0) ? wwallsno : bwallsno);
+        }
+        cout << endl << "    +";
+        for (int col = 0 ; col < 9 ; col++) {
+            if (horizontal_wall(row, col)) {
+                printf("=====%c", wall_connections[row][col] ? ((col < 8 && vertical_wall(row, col + 1)) ? BOTH : '=') : '+');
+            } else {
+                printf("-----%c", (row < 8 && vertical_wall(row, col) && vertical_wall(row + 1, col)) ? VWALL : '+');
+            }
+        }
+        cout << endl;
+    }
+    cout << "  ";
+    for (int i = 0 ; i < 9 ; i++) {
+        cout << "     " << (char) ('A' + i);
+    }
+    cout << endl << endl;
 }
-
