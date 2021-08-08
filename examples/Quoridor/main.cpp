@@ -94,7 +94,19 @@ int main() {
             } else {
                 string player, type, coords;
                 cin >> player >> type >> coords;
-
+                char p = parse_player(player);
+                char t = parse_type(type);
+                int x, y;
+                bool succ = parse_coords(coords, x, y);
+                if (p == 0x00 || t == 0x00 || !succ) {
+                    cout << "Invalid command: Invalid arguments" << endl << endl;
+                } else if (p != state->whose_turn()) {
+                    cout << "Invalid command: Not this player's turn" << endl << endl;
+                } else {
+                    // play the move
+                    Quoridor_move move(x, y, p, t);
+                    state->play_move(&move);
+                }
             }
         }
         else if (command == "genmove") {
@@ -103,7 +115,6 @@ int main() {
             } else {
                 // TODO
                 cout << "Not implemented yet" << endl << endl;
-
                 // check if winning move
                 winner = state->check_winner();
             }

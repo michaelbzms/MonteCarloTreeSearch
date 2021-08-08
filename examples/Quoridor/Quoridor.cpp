@@ -210,7 +210,7 @@ bool Quoridor_state::legal_step(short int x, short int y, char p) const {
 }
 
 bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizontal) {
-    // TODO: Double-check
+    // TODO: Double-check -> Bug when h d3, v e3 and v d4 (should be legal but isn't)
     // check if our turn
     if (p != turn) return false;
     // check out-of-bounds
@@ -343,7 +343,8 @@ void Quoridor_state::print() const {
     for (int i = 0 ; i < 9 ; i++) {
         cout << "     " << (char) ('A' + i);
     }
-    cout << endl << "    +";
+    cout << "           Player turn: " << (turn == 'W' ? "White" : "Black") << endl;
+    cout << "    +";
     for (int i = 0 ; i < 9 ; i++) {
         cout << " ━━━ +";
     }
@@ -363,7 +364,7 @@ void Quoridor_state::print() const {
         cout << endl << "    +";
         for (int col = 0 ; col < 9 ; col++) {
             if (horizontal_wall(row, col)) {
-                printf("=====%s", wall_connections[row][col] ? ((col < 8 && vertical_wall(row, col + 1)) ? BOTH : "=") : "+");
+                printf("=====%s", wall_connections[row][col] ? ((row < 8 && vertical_wall(row + 1, col)) ? VWALL : "=") : "+");
             } else if (row < 8) {
                 printf("-----%s", (vertical_wall(row, col) && vertical_wall(row + 1, col)) ? VWALL : "+");
             } else {
