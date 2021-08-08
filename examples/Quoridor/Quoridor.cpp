@@ -333,23 +333,23 @@ double Quoridor_state::rollout() const {
 }
 
 void Quoridor_state::print() const {
-    #define VWALL ((char) 186)
-    #define BOTH ((char) 206)
+    #define VWALL "║"
+    #define BOTH "╬"
     cout << endl << "  ";
     for (int i = 0 ; i < 9 ; i++) {
         cout << "     " << (char) ('A' + i);
     }
     cout << endl << "    +";
     for (int i = 0 ; i < 9 ; i++) {
-        cout << "-----+";
+        cout << " ━━━ +";
     }
     cout << endl;
     for (int row = 0 ; row < 9 ; row++) {
-        printf(" %d  |", row+1);
+        printf(" %d  ┃", row+1);
         for (int col = 0 ; col < 9 ; col++) {
-            printf("  %c  %c",
+            printf("  %c  %s",
                    (bx == row && by == col) ? 'B' : (wx == row && wy == col) ? 'W' : ' ',
-                   (vertical_wall(row, col) ? VWALL : '|'));
+                   (vertical_wall(row, col) ? VWALL : (col < 8 ? "|" : "┃")));
         }
         printf("  %d", row+1);
         // print wall counts
@@ -359,9 +359,11 @@ void Quoridor_state::print() const {
         cout << endl << "    +";
         for (int col = 0 ; col < 9 ; col++) {
             if (horizontal_wall(row, col)) {
-                printf("=====%c", wall_connections[row][col] ? ((col < 8 && vertical_wall(row, col + 1)) ? BOTH : '=') : '+');
+                printf("=====%s", wall_connections[row][col] ? ((col < 8 && vertical_wall(row, col + 1)) ? BOTH : "=") : "+");
+            } else if (row < 8) {
+                printf("-----%s", (vertical_wall(row, col) && vertical_wall(row + 1, col)) ? VWALL : "+");
             } else {
-                printf("-----%c", (row < 8 && vertical_wall(row, col) && vertical_wall(row + 1, col)) ? VWALL : '+');
+                printf(" ━━━ +");
             }
         }
         cout << endl;

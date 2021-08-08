@@ -14,7 +14,7 @@ TicTacToe: mcts.o examples/TicTacToe/main.cpp examples/TicTacToe/TicTacToe.cpp e
 	g++ -o $(TICTACTOE_EXE) $(FLAGS) examples/TicTacToe/main.cpp examples/TicTacToe/TicTacToe.cpp mcts.o
 
 
-Quoridor: mcts.o examples/Quoridor/Quoridor.cpp examples/Quoridor/Quoridor.h
+Quoridor: mcts.o examples/Quoridor/main.cpp examples/Quoridor/Quoridor.cpp examples/Quoridor/Quoridor.h
 	g++ -o $(QUORIDOR_EXE) $(FLAGS) examples/Quoridor/main.cpp examples/Quoridor/Quoridor.cpp mcts.o
 
 clean:
