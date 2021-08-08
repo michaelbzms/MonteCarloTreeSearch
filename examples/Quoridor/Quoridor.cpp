@@ -124,6 +124,9 @@ void Quoridor_state::reset_dists(short int **&dists) {
 }
 
 void Quoridor_state::add_wall(short int x, short int y, bool horizontal) {
+    // (!) adding a wall resets both dists
+    reset_dists(wdists);
+    reset_dists(bdists);
     char put = horizontal ? 'h' : 'v', other = horizontal ? 'v' : 'h';
     if (walls[x][y] == ' ') walls[x][y] = put;
     else if (walls[x][y] == other) walls[x][y] = 'b';
@@ -131,6 +134,9 @@ void Quoridor_state::add_wall(short int x, short int y, bool horizontal) {
 }
 
 void Quoridor_state::remove_wall(short x, short y, bool horizontal) {
+    // (!) removing a wall resets both dists
+    reset_dists(wdists);
+    reset_dists(bdists);
     char put = horizontal ? 'h' : 'v', other = horizontal ? 'v' : 'h';
     if (walls[x][y] == put) walls[x][y] = ' ';
     else if (walls[x][y] == 'b') walls[x][y] = other;
@@ -141,6 +147,8 @@ bool Quoridor_state::legal_step(short int x, short int y, char p) const {
     // TODO: Double Check
     // check if our turn
     if (p != turn) return false;
+    // check if out-of-bouds
+    if (x < 0 || x >= 9 || y < 0 || y >= 9) return false;
     // check if move falls into an occupied square
     if ((x == bx && y == by) || (x == wx && y == wy)) return false;
     // determine two player's pos
@@ -233,7 +241,7 @@ bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizonta
         add_wall(x +  ((int) horizontal), y + ((int) !horizontal), horizontal);
         // check if any pawn is blocked
         int white_path = get_shortest_path('W');
-        if (white_path < 0) blocked = true;                  // white is blocked
+        if (white_path < 0) blocked = true;           // white is blocked
         if (!blocked) {
             int black_path = get_shortest_path('B');
             if (black_path < 0) blocked = true;       // black is blocked
@@ -309,37 +317,9 @@ bool Quoridor_state::play_move(const Quoridor_move *move) {
     return true;
 }
 
-///////////////////////////////////////////////////////////////////////////
-
-bool Quoridor_state::is_terminal() const {
-    char winner = check_winner();
-    return winner != 'W' && winner != 'B';
-}
-
-MCTS_state *Quoridor_state::next_state(const MCTS_move *move) const {
-    Quoridor_state *new_state = new Quoridor_state(*this);
-    new_state->play_move((const Quoridor_move *) move);
-    return new_state;
-}
-
-/** It is very important to decide which actions we will be considering.
- *  We would like to only consider good moves by using appropriate heuristics.
- *  This minimizes the branching factor of the search tree while also not investing
- *  in subtrees caused by bad enemy (and also ours) moves, where we would probably be better anyway.
- */
-queue<MCTS_move *> *Quoridor_state::actions_to_try() const {
-    // TODO
-    return nullptr;
-}
-
-double Quoridor_state::rollout() const {
-    // TODO
-    return 0;
-}
-
 void Quoridor_state::print() const {
-    #define VWALL "║"
-    #define BOTH "╬"
+#define VWALL "║"
+#define BOTH "╬"
     cout << endl << "  ";
     for (int i = 0 ; i < 9 ; i++) {
         cout << "     " << (char) ('A' + i);
@@ -379,4 +359,57 @@ void Quoridor_state::print() const {
         cout << "     " << (char) ('A' + i);
     }
     cout << endl << endl;
+}
+
+///////////////////////////////////////////////////////////////////////////
+
+bool Quoridor_state::is_terminal() const {
+    char winner = check_winner();
+    return winner != 'W' && winner != 'B';
+}
+
+MCTS_state *Quoridor_state::next_state(const MCTS_move *move) const {
+    Quoridor_state *new_state = new Quoridor_state(*this);
+    new_state->play_move((const Quoridor_move *) move);
+    return new_state;
+}
+
+/** It is very important to decide which actions we will be considering.
+ *  We would like to only consider good moves by using appropriate heuristics.
+ *  This minimizes the branching factor of the search tree while also not investing
+ *  in subtrees caused by bad enemy (and also ours) moves, where we would probably be better anyway.
+ */
+queue<MCTS_move *> *Quoridor_state::generate_good_moves(int min_wall_enc) const {
+    char p = turn;
+    short int posx = (turn == 'W') ? wx : bx;
+    short int posy = (turn == 'W') ? wy : by;
+    short int enemy_posx = (turn == 'W') ? bx : wx;
+    short int enemy_posy = (turn == 'W') ? by : wy;
+    queue<MCTS_move *> *Q = new queue<MCTS_move *>();
+    // First consider all legal step moves
+    if (legal_step(posx - 1, posy, p)) Q->push(new Quoridor_move(posx - 1, posy, p, ' '));
+    if (legal_step(posx - 2, posy, p)) Q->push(new Quoridor_move(posx - 2, posy, p, ' '));
+    if (legal_step(posx + 1, posy, p)) Q->push(new Quoridor_move(posx + 1, posy, p, ' '));
+    if (legal_step(posx + 2, posy, p)) Q->push(new Quoridor_move(posx + 2, posy, p, ' '));
+    if (legal_step(posx, posy - 1, p)) Q->push(new Quoridor_move(posx, posy - 1, p, ' '));
+    if (legal_step(posx, posy - 2, p)) Q->push(new Quoridor_move(posx, posy - 2, p, ' '));
+    if (legal_step(posx, posy + 1, p)) Q->push(new Quoridor_move(posx, posy + 1, p, ' '));
+    if (legal_step(posx, posy + 2, p)) Q->push(new Quoridor_move(posx, posy + 2, p, ' '));
+    if (legal_step(posx - 1, posy - 1, p)) Q->push(new Quoridor_move(posx - 1, posy - 1, p, ' '));
+    if (legal_step(posx - 1, posy + 1, p)) Q->push(new Quoridor_move(posx - 1, posy + 1, p, ' '));
+    if (legal_step(posx + 1, posy - 1, p)) Q->push(new Quoridor_move(posx + 1, posy - 1, p, ' '));
+    if (legal_step(posx + 1, posy + 1, p)) Q->push(new Quoridor_move(posx + 1, posy + 1, p, ' '));
+    // Then consider good wall moves
+    // TODO
+    return Q;
+}
+
+queue<MCTS_move *> *Quoridor_state::actions_to_try() const {
+    #define MIN_WALL_ENCUMBRANCE 2
+    return generate_good_moves(MIN_WALL_ENCUMBRANCE);
+}
+
+double Quoridor_state::rollout() const {
+    // TODO
+    return 0;
 }

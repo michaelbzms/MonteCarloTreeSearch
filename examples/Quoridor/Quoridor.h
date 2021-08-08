@@ -55,7 +55,9 @@ public:
     bool legal_move(const Quoridor_move *move);
     bool play_move(const Quoridor_move *move);
     int get_shortest_path(char player);
-    /** Overrides: */
+    /** Heuristics **/
+    queue<MCTS_move *> * generate_good_moves(int min_wall_enc) const;
+    /** Overrides: **/
     bool is_terminal() const override;
     MCTS_state *next_state(const MCTS_move *move) const override;
     queue<MCTS_move *> *actions_to_try() const override;
