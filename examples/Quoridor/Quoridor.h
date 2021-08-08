@@ -43,7 +43,7 @@ class Quoridor_state : public MCTS_state {
     void add_wall(short int x, short int y, bool horizontal);
     void remove_wall(short int x, short int y, bool horizontal);
     bool legal_step(short int x, short int y, char p) const;
-    bool legal_wall(short int x, short int y, char p, bool horizontal);
+    bool legal_wall(short int x, short int y, char p, bool horizontal, bool check_blocking = true);
     short int **calculate_dists_from(short int x, short int y);
     static void reset_dists(short int **&dists);
 public:
@@ -54,7 +54,7 @@ public:
     char check_winner() const;
     bool legal_move(const Quoridor_move *move);
     bool play_move(const Quoridor_move *move);
-    int get_shortest_path(char player);
+    int get_shortest_path(char player, const Quoridor_move *extra_wall_move = NULL);
     /** Heuristics **/
     queue<MCTS_move *> * generate_good_moves(int min_wall_enc) const;
     /** Overrides: **/

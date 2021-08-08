@@ -79,39 +79,66 @@ short int **Quoridor_state::calculate_dists_from(short int x, short int y) {
     return dists;
 }
 
-int Quoridor_state::get_shortest_path(char player) {
+int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wall_move) {
+    int endzone;
+    short int posx, posy;
+    short int **dists = NULL;
     if (player == 'W') {
         // if not already calculated on a previous call
-        if (wdists == NULL) {
+        if (wdists == NULL && extra_wall_move == NULL) {
             // calculate dists to every square using BFS (expensive)
             wdists = calculate_dists_from(wx, wy);
         }
-        // scan the end-zone and keep the minimum
-        int min = 9999999;
-        for (int i = 0 ; i < 9 ; i++) {
-            if (wdists[8][i] >= 0 && wdists[8][i] < min) {
-                min = wdists[8][i];
-            }
-        }
-        return min;
+        endzone = 8;
+        posx = wx;
+        posy = wy;
+        dists = wdists;
     } else if (player == 'B') {
         // if not already calculated on a previous call
-        if (bdists == NULL) {
+        if (bdists == NULL && extra_wall_move == NULL) {
             // calculate dists to every square using BFS (expensive)
             bdists = calculate_dists_from(bx, by);
         }
-        // scan the end-zone and keep the minimum
-        int min = 9999999;
-        for (int i = 0 ; i < 9 ; i++) {
-            if (bdists[0][i] >= 0 && bdists[0][i] < min) {
-                min = bdists[0][i];
-            }
-        }
-        return min;
+        endzone = 0;
+        posx = bx;
+        posy = by;
+        dists = bdists;
     } else {
-        cerr << "Invalid player arg" << endl;
+        cerr << "Invalid player arg" << endl;   // should not happen
         return -1;
     }
+    // if dists is NULL then we need to re-calculate dists separately (disregarding previous value)
+    if (extra_wall_move != NULL) {
+        // should not happen:
+        if (extra_wall_move->type != 'h' && extra_wall_move->type != 'v') { cerr << "Error: extra_wall_move is not a wall move!" << endl; return -1; }
+        // TODO: the move must be legal but can we assume this or should we check? Do we check it twice this way?
+        if (!legal_wall(extra_wall_move->x, extra_wall_move->y, extra_wall_move->player, extra_wall_move->type == 'h', false)) {   // (!) check_blocking = false to prevent infinite loop
+            cerr << "Error: extra_wall_move is illegal!" << endl;
+            return -1;
+        }
+        // temporarily play the wall move
+        bool horizontal = extra_wall_move->type == 'h';
+        add_wall(extra_wall_move->x, extra_wall_move->y, horizontal);
+        add_wall(extra_wall_move->x + ((int) !horizontal), extra_wall_move->y + ((int) horizontal), horizontal);
+        // calc dists
+        dists = calculate_dists_from(posx, posy);
+        // remove wall
+        remove_wall(extra_wall_move->x, extra_wall_move->y, horizontal);
+        remove_wall(extra_wall_move->x + ((int) !horizontal), extra_wall_move->y + ((int) horizontal), horizontal);
+    }
+    // scan the end-zone and keep the minimum
+    #define BIGNUM 9999999
+    int min = BIGNUM;
+    for (int i = 0 ; i < 9 ; i++) {
+        if (dists[endzone][i] >= 0 && dists[endzone][i] < min) {
+            min = dists[endzone][i];
+        }
+    }
+    if (min == BIGNUM) min = -1;     // something < 0  ->  no path exists
+    if (extra_wall_move != NULL) {
+        reset_dists(dists);      // delete from heap
+    }
+    return min;
 }
 
 void Quoridor_state::reset_dists(short int **&dists) {
@@ -124,9 +151,7 @@ void Quoridor_state::reset_dists(short int **&dists) {
 }
 
 void Quoridor_state::add_wall(short int x, short int y, bool horizontal) {
-    // (!) adding a wall resets both dists
-    reset_dists(wdists);
-    reset_dists(bdists);
+    // Note: this low-level function does NOT reset dists calculated so we need to do that outside if we wish so
     char put = horizontal ? 'h' : 'v', other = horizontal ? 'v' : 'h';
     if (walls[x][y] == ' ') walls[x][y] = put;
     else if (walls[x][y] == other) walls[x][y] = 'b';
@@ -134,9 +159,6 @@ void Quoridor_state::add_wall(short int x, short int y, bool horizontal) {
 }
 
 void Quoridor_state::remove_wall(short x, short y, bool horizontal) {
-    // (!) removing a wall resets both dists
-    reset_dists(wdists);
-    reset_dists(bdists);
     char put = horizontal ? 'h' : 'v', other = horizontal ? 'v' : 'h';
     if (walls[x][y] == put) walls[x][y] = ' ';
     else if (walls[x][y] == 'b') walls[x][y] = other;
@@ -217,7 +239,7 @@ bool Quoridor_state::legal_step(short int x, short int y, char p) const {
     return false;
 }
 
-bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizontal) {
+bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizontal, bool check_blocking) {
     // TODO: Double-check
     // check if our turn
     if (p != turn) return false;
@@ -234,23 +256,13 @@ bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizonta
     if (horizontal && horizontal_wall(x, y + 1)) return false;
     if (!horizontal && vertical_wall(x + 1, y)) return false;
     // check if playing this wall blocks a pawn's path (expensive, avoid when possible)
-    if (20 - wwallsno - bwallsno >= 5) {      // (!) there need to be played at least 5 walls already for this to be possible
+    if (check_blocking && 20 - wwallsno - bwallsno >= 5) {    // (!) there need to be played at least 5 walls already for this to be possible
         bool blocked = false;
-        // temporarily play wall
-        add_wall(x, y, horizontal);
-        add_wall(x +  ((int) horizontal), y + ((int) !horizontal), horizontal);
-        // check if any pawn is blocked
-        int white_path = get_shortest_path('W');
-        if (white_path < 0) blocked = true;           // white is blocked
-        if (!blocked) {
-            int black_path = get_shortest_path('B');
-            if (black_path < 0) blocked = true;       // black is blocked
-        }
-        // un-play wall
-        remove_wall(x, y, horizontal);
-        remove_wall(x +  ((int) horizontal), y + ((int) !horizontal), horizontal);
-        // if any of the two pawns was blocked return false
-        if (blocked) return false;
+        Quoridor_move wallmove(x, y, p, horizontal ? 'h' : 'v');
+        int white_path = get_shortest_path('W', &wallmove);
+        if (white_path < 0) return false;           // white is blocked
+        int black_path = get_shortest_path('B', &wallmove);
+        if (black_path < 0) return false;           // black is blocked
     }
     // if passed all the checks, it's legal
     return true;
