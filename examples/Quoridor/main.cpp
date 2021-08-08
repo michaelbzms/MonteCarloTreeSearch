@@ -3,7 +3,7 @@
 #include "../../mcts/include/mcts.h"
 
 //TODO: make this prettier
-#define COMMANDS "Valid commands are:\n - quit or q\n - help\n - autoprint\n - winner\n - showboard or print\n - playmove <player> <col><row>\n - playwall <player> <type> <col><row>\n - genmove\n - clearboard or reset\n"
+#define COMMANDS "Valid commands are:\n - quit or q\n - help\n - autoprint\n - winner\n - showboard or print\n - playmove or m <col><row>\n - playwall or w <type> <col><row>\n - genmove\n - clearboard or reset\n"
 #define PROMPT "> "
 
 
@@ -42,7 +42,7 @@ int main() {
     if (auto_print) {
         state->print();
     }
-    cout << PROMPT;
+    cout << (state->whose_turn() == 'W' ? "White's move:" : "Black's move:") << endl << PROMPT;
     flush(cout);
     while (cin >> command) {
         if (command == "q" || command == "quit"){
@@ -57,27 +57,24 @@ int main() {
         }
         else if (command == "winner") {
             winner = state->check_winner();
-            cout << ((winner != ' ') ? "TRUE" : "FALSE") << winner << endl;
+            cout << ((winner != ' ') ? "TRUE " : "FALSE ") << winner << endl;
         }
         else if (command == "showboard" || command == "print") {
             state->print();
         }
-        else if (command == "playmove") {
+        else if (command == "playmove" || command == "m") {
             if (winner != ' ') {
+                cin.ignore(512, '\n');
                 cout << "Game has already finished." << endl << endl;
             } else {
-                string player, coords;
-                cin >> player >> coords;
-                char p = parse_player(player);
+                string coords;
+                cin >> coords;
                 int x, y;
+                char p = state->whose_turn();
                 bool succ = parse_coords(coords, x, y);
-                if (p == 0x00 || !succ) {
-                    cout << player << coords << endl;
+                if (!succ) {
                     cout << "Invalid command: Invalid arguments" << endl << endl;
-                } else if (p != state->whose_turn()) {
-                    cout << "Invalid command: Not this player's turn" << endl << endl;
-                }
-                else {
+                } else {
                     // play the move
                     Quoridor_move move(x, y, p, ' ');
                     succ = state->play_move(&move);
@@ -89,20 +86,19 @@ int main() {
                 }
             }
         }
-        else if (command == "playwall") {
+        else if (command == "playwall" || command == "w") {
             if (winner != ' ') {
+                cin.ignore(512, '\n');
                 cout << "Game has already finished." << endl << endl;
             } else {
-                string player, type, coords;
-                cin >> player >> type >> coords;
-                char p = parse_player(player);
+                string type, coords;
+                cin >> type >> coords;
+                char p = state->whose_turn();
                 char t = parse_type(type);
                 int x, y;
                 bool succ = parse_coords(coords, x, y);
-                if (p == 0x00 || t == 0x00 || !succ) {
+                if (t == 0x00 || !succ) {
                     cout << "Invalid command: Invalid arguments" << endl << endl;
-                } else if (p != state->whose_turn()) {
-                    cout << "Invalid command: Not this player's turn" << endl << endl;
                 } else {
                     // play the move
                     Quoridor_move move(x, y, p, t);
@@ -113,6 +109,7 @@ int main() {
         }
         else if (command == "genmove") {
             if (winner != ' ') {
+                cin.ignore(512, '\n');
                 cout << "Game has already finished." << endl << endl;
             } else {
                 // TODO
@@ -135,7 +132,7 @@ int main() {
         if (winner == 'W' || winner == 'B') {
             cout << endl << ((winner == 'W') ? "White" : "Black") << " has won the game!" << endl << endl;
         }
-        cout << PROMPT;
+        cout << (state->whose_turn() == 'W' ? "White's move:" : "Black's move:") << endl << PROMPT;
         flush(cout);
     }
     delete state;
