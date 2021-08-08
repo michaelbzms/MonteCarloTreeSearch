@@ -53,7 +53,7 @@ public:
     char whose_turn() const { return turn; }
     char check_winner() const;
     bool legal_move(const Quoridor_move *move);
-    void play_move(const Quoridor_move *move);
+    bool play_move(const Quoridor_move *move);
     int get_shortest_path(char player);
     /** Overrides: */
     bool is_terminal() const override;

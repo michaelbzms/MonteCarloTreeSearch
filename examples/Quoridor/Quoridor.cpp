@@ -210,7 +210,7 @@ bool Quoridor_state::legal_step(short int x, short int y, char p) const {
 }
 
 bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizontal) {
-    // TODO: Double-check -> Bug when h d3, v e3 and v d4 (should be legal but isn't)
+    // TODO: Double-check
     // check if our turn
     if (p != turn) return false;
     // check out-of-bounds
@@ -223,8 +223,8 @@ bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizonta
     char opposite_type = (horizontal) ? 'v' : 'h';
     if (walls[x][y] == type || walls[x][y] == 'b' || (walls[x][y] == opposite_type && wall_connections[x][y])) return false;
     // check if the second part of the wall is blocked
-    if (horizontal && horizontal_wall(x + 1, y)) return false;
-    if (!horizontal && vertical_wall(x, y + 1)) return false;
+    if (horizontal && horizontal_wall(x, y + 1)) return false;
+    if (!horizontal && vertical_wall(x + 1, y)) return false;
     // check if playing this wall blocks a pawn's path (expensive, avoid when possible)
     if (20 - wwallsno - bwallsno >= 5) {      // (!) there need to be played at least 5 walls already for this to be possible
         bool blocked = false;
@@ -261,10 +261,10 @@ bool Quoridor_state::legal_move(const Quoridor_move *move) {
     }
 }
 
-void Quoridor_state::play_move(const Quoridor_move *move) {
+bool Quoridor_state::play_move(const Quoridor_move *move) {
     if (!legal_move(move)) {
         cout << "Invalid command: Illegal move: " << move->sprint() << endl << endl;
-        return;
+        return false;
     }
     if (move->type == 'h' || move->type == 'v') {   // wall move
         // play legal wall
@@ -306,6 +306,7 @@ void Quoridor_state::play_move(const Quoridor_move *move) {
     }
     // change turn
     change_turn();
+    return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -364,9 +365,9 @@ void Quoridor_state::print() const {
         cout << endl << "    +";
         for (int col = 0 ; col < 9 ; col++) {
             if (horizontal_wall(row, col)) {
-                printf("=====%s", wall_connections[row][col] ? ((row < 8 && vertical_wall(row + 1, col)) ? VWALL : "=") : "+");
+                printf("═════%s", wall_connections[row][col] ? ((row < 8 && vertical_wall(row, col) && wall_connections[row][col] && vertical_wall(row + 1, col)) ? VWALL : "═") : "+");
             } else if (row < 8) {
-                printf("-----%s", (vertical_wall(row, col) && vertical_wall(row + 1, col)) ? VWALL : "+");
+                printf("-----%s", (vertical_wall(row, col) && wall_connections[row][col] && vertical_wall(row + 1, col)) ? VWALL : "+");
             } else {
                 printf(" ━━━ +");
             }

@@ -3,7 +3,8 @@
 #include "../../mcts/include/mcts.h"
 
 //TODO: make this prettier
-#define COMMANDS "Valid commands are:\n - quit or q\n - help\n - autoprint\n - winner\n - showboard or print\n - playmove <player> <row><col>\n - playwall <player> <type> <row><col>\n - genmove\n - clearboard or reset\n"
+#define COMMANDS "Valid commands are:\n - quit or q\n - help\n - autoprint\n - winner\n - showboard or print\n - playmove <player> <col><row>\n - playwall <player> <type> <col><row>\n - genmove\n - clearboard or reset\n"
+#define PROMPT "> "
 
 
 char parse_player(const string &s) {
@@ -29,25 +30,21 @@ bool parse_coords(const string &s, int &x, int &y) {
 
 
 int main() {
-    cout << "==============================" << endl
-         << "===╣ Welcome to Quoridor! ╠===" << endl
-         << "==============================" << endl << endl;
+    cout << "============================================================" << endl
+         << "===============╣    Welcome to Quoridor!    ╠===============" << endl
+         << "============================================================" << endl << endl;
     cout << COMMANDS << endl << endl;
 
     Quoridor_state *state = new Quoridor_state();
     string command;
     char winner = ' ';
     bool auto_print = true;
-    while (true) {
-        if (auto_print) {
-            state->print();
-        }
-        if (winner == 'W' || winner == 'B') {
-            cout << endl << ((winner == 'W') ? "White" : "Black") << " has won the game!" << endl << endl;
-        }
-        cout << "> ";
-        flush(cout);
-        cin >> command;
+    if (auto_print) {
+        state->print();
+    }
+    cout << PROMPT;
+    flush(cout);
+    while (cin >> command) {
         if (command == "q" || command == "quit"){
             cout << "Exiting..." << endl;
             break;
@@ -75,6 +72,7 @@ int main() {
                 int x, y;
                 bool succ = parse_coords(coords, x, y);
                 if (p == 0x00 || !succ) {
+                    cout << player << coords << endl;
                     cout << "Invalid command: Invalid arguments" << endl << endl;
                 } else if (p != state->whose_turn()) {
                     cout << "Invalid command: Not this player's turn" << endl << endl;
@@ -82,9 +80,12 @@ int main() {
                 else {
                     // play the move
                     Quoridor_move move(x, y, p, ' ');
-                    state->play_move(&move);
-                    // check if winning move
-                    winner = state->check_winner();
+                    succ = state->play_move(&move);
+                    if (succ) {
+                        cout << move.sprint() << endl << endl;
+                        // check if winning move
+                        winner = state->check_winner();
+                    }
                 }
             }
         }
@@ -105,7 +106,8 @@ int main() {
                 } else {
                     // play the move
                     Quoridor_move move(x, y, p, t);
-                    state->play_move(&move);
+                    succ = state->play_move(&move);
+                    if (succ) cout << move.sprint() << endl << endl;
                 }
             }
         }
@@ -126,6 +128,15 @@ int main() {
         else {
             cout << "? unknown command" << endl << endl;
         }
+        // before reading next command
+        if (auto_print) {
+            state->print();
+        }
+        if (winner == 'W' || winner == 'B') {
+            cout << endl << ((winner == 'W') ? "White" : "Black") << " has won the game!" << endl << endl;
+        }
+        cout << PROMPT;
+        flush(cout);
     }
     delete state;
     return 0;
