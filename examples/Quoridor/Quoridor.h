@@ -13,9 +13,10 @@ struct Quoridor_move : public MCTS_move {
         const Quoridor_move &o = (const Quoridor_move &) other;
         return x == o.x && y == o.y && player == o.player && type == o.type;
     }
-    friend ostream& operator<<(ostream& os, Quoridor_move const &move) {
-        string movetype = (move.type == 'h') ? "horizontal wall" : (move.type == 'v') ? "vertical wall" : "move";
-        return os << move.player << " " << movetype << " " << ('a' + move.x) << move.y << endl;
+    string sprint() const {
+        string movetype = (type == 'h') ? "places horizontal wall at" : (type == 'v') ? "places vertical wall at" : "moves to";
+        string playerstr = (player == 'W') ? "White" : "Black";
+        return playerstr + " " + movetype + " " + string(1, (char) ('A' + y)) + to_string(x + 1);
     }
 };
 
@@ -49,6 +50,7 @@ public:
     Quoridor_state();
     Quoridor_state(const Quoridor_state &other);
     ~Quoridor_state() override;
+    char whose_turn() const { return turn; }
     char check_winner() const;
     bool legal_move(const Quoridor_move *move);
     void play_move(const Quoridor_move *move);

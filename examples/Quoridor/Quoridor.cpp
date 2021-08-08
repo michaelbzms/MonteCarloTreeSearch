@@ -139,6 +139,8 @@ void Quoridor_state::remove_wall(short x, short y, bool horizontal) {
 
 bool Quoridor_state::legal_step(short int x, short int y, char p) const {
     // TODO: Double Check
+    // check if our turn
+    if (p != turn) return false;
     // check if move falls into an occupied square
     if ((x == bx && y == by) || (x == wx && y == wy)) return false;
     // determine two player's pos
@@ -209,6 +211,8 @@ bool Quoridor_state::legal_step(short int x, short int y, char p) const {
 
 bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizontal) {
     // TODO: Double-check
+    // check if our turn
+    if (p != turn) return false;
     // check out-of-bounds
     if (x < 0 || y < 0 || x >= 8 || y >= 8) return false;
     // check if out of walls
@@ -259,7 +263,7 @@ bool Quoridor_state::legal_move(const Quoridor_move *move) {
 
 void Quoridor_state::play_move(const Quoridor_move *move) {
     if (!legal_move(move)) {
-        cerr << "Attempted illegal move:" << move << endl;
+        cout << "Invalid command: Illegal move: " << move->sprint() << endl << endl;
         return;
     }
     if (move->type == 'h' || move->type == 'v') {   // wall move
