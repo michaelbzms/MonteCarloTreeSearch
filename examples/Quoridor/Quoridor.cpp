@@ -36,6 +36,10 @@ char Quoridor_state::check_winner() const {
 }
 
 short int **Quoridor_state::calculate_dists_from(short int x, short int y) {
+    if (x < 0 || x >= 9 || y < 0 || y >= 9) {
+        cerr << "Error: Invalid coordinates in calculate_dists_from()" << endl;   // should not happen
+        return NULL;
+    }
     // allocate space for result
     short int **dists = new short int *[9];
     for (int i = 0 ; i < 9 ; i++) {
@@ -79,9 +83,8 @@ short int **Quoridor_state::calculate_dists_from(short int x, short int y) {
     return dists;
 }
 
-int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wall_move) {
+int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wall_move, short int posx, short int posy) {
     int endzone;
-    short int posx, posy;
     short int **dists = NULL;
     if (player == 'W') {
         // if not already calculated on a previous call
@@ -90,8 +93,10 @@ int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wa
             wdists = calculate_dists_from(wx, wy);
         }
         endzone = 8;
-        posx = wx;
-        posy = wy;
+        if (posx == -1 || posy == -1) {
+            posx = wx;
+            posy = wy;
+        }
         dists = wdists;
     } else if (player == 'B') {
         // if not already calculated on a previous call
@@ -100,8 +105,10 @@ int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wa
             bdists = calculate_dists_from(bx, by);
         }
         endzone = 0;
-        posx = bx;
-        posy = by;
+        if (posx == -1 || posy == -1) {
+            posx = bx;
+            posy = by;
+        }
         dists = bdists;
     } else {
         cerr << "Invalid player arg" << endl;   // should not happen
@@ -373,6 +380,63 @@ void Quoridor_state::print() const {
     cout << endl << endl;
 }
 
+forward_list<MCTS_move *> Quoridor_state::get_legal_step_moves(char p) const {
+    forward_list<MCTS_move *> Q;
+    short int posx = (turn == 'W') ? wx : bx;
+    short int posy = (turn == 'W') ? wy : by;
+    if (legal_step(posx - 1, posy, p)) Q.push_front(new Quoridor_move(posx - 1, posy, p, ' '));
+    if (legal_step(posx - 2, posy, p)) Q.push_front(new Quoridor_move(posx - 2, posy, p, ' '));
+    if (legal_step(posx + 1, posy, p)) Q.push_front(new Quoridor_move(posx + 1, posy, p, ' '));
+    if (legal_step(posx + 2, posy, p)) Q.push_front(new Quoridor_move(posx + 2, posy, p, ' '));
+    if (legal_step(posx, posy - 1, p)) Q.push_front(new Quoridor_move(posx, posy - 1, p, ' '));
+    if (legal_step(posx, posy - 2, p)) Q.push_front(new Quoridor_move(posx, posy - 2, p, ' '));
+    if (legal_step(posx, posy + 1, p)) Q.push_front(new Quoridor_move(posx, posy + 1, p, ' '));
+    if (legal_step(posx, posy + 2, p)) Q.push_front(new Quoridor_move(posx, posy + 2, p, ' '));
+    if (legal_step(posx - 1, posy - 1, p)) Q.push_front(new Quoridor_move(posx - 1, posy - 1, p, ' '));
+    if (legal_step(posx - 1, posy + 1, p)) Q.push_front(new Quoridor_move(posx - 1, posy + 1, p, ' '));
+    if (legal_step(posx + 1, posy - 1, p)) Q.push_front(new Quoridor_move(posx + 1, posy - 1, p, ' '));
+    if (legal_step(posx + 1, posy + 1, p)) Q.push_front(new Quoridor_move(posx + 1, posy + 1, p, ' '));
+    return Q;
+}
+
+vector<MCTS_move *> Quoridor_state::get_legal_step_moves2(char p) const {
+    vector<MCTS_move *> Q;
+    short int posx = (turn == 'W') ? wx : bx;
+    short int posy = (turn == 'W') ? wy : by;
+    if (legal_step(posx - 1, posy, p)) Q.push_back(new Quoridor_move(posx - 1, posy, p, ' '));
+    if (legal_step(posx - 2, posy, p)) Q.push_back(new Quoridor_move(posx - 2, posy, p, ' '));
+    if (legal_step(posx + 1, posy, p)) Q.push_back(new Quoridor_move(posx + 1, posy, p, ' '));
+    if (legal_step(posx + 2, posy, p)) Q.push_back(new Quoridor_move(posx + 2, posy, p, ' '));
+    if (legal_step(posx, posy - 1, p)) Q.push_back(new Quoridor_move(posx, posy - 1, p, ' '));
+    if (legal_step(posx, posy - 2, p)) Q.push_back(new Quoridor_move(posx, posy - 2, p, ' '));
+    if (legal_step(posx, posy + 1, p)) Q.push_back(new Quoridor_move(posx, posy + 1, p, ' '));
+    if (legal_step(posx, posy + 2, p)) Q.push_back(new Quoridor_move(posx, posy + 2, p, ' '));
+    if (legal_step(posx - 1, posy - 1, p)) Q.push_back(new Quoridor_move(posx - 1, posy - 1, p, ' '));
+    if (legal_step(posx - 1, posy + 1, p)) Q.push_back(new Quoridor_move(posx - 1, posy + 1, p, ' '));
+    if (legal_step(posx + 1, posy - 1, p)) Q.push_back(new Quoridor_move(posx + 1, posy - 1, p, ' '));
+    if (legal_step(posx + 1, posy + 1, p)) Q.push_back(new Quoridor_move(posx + 1, posy + 1, p, ' '));
+    return Q;
+}
+
+Quoridor_move *Quoridor_state::get_best_step_move(char player) {
+    int min = 9999999;
+    Quoridor_move *argmin = NULL;
+    forward_list<MCTS_move *> list = get_legal_step_moves(player);
+    for (auto *move : list) {
+        Quoridor_move *m = (Quoridor_move *) move;                             // TODO: casting necessary unless I change the return type
+        int path = get_shortest_path(player, NULL, m->x, m->y);
+        if (path >= 0 && path < min) {
+            min = path;
+            delete argmin;     // delete previous (NULL is ignored)
+            argmin = m;
+        } else {
+            delete m;          // delete all except argmin
+        }
+    }
+    list.clear();              // TODO: is this needed?
+    return argmin;
+}
+
 ///////////////////////////////////////////////////////////////////////////
 
 bool Quoridor_state::is_terminal() const {
@@ -399,29 +463,22 @@ queue<MCTS_move *> *Quoridor_state::generate_good_moves(int min_wall_enc) const 
     short int enemy_posy = (turn == 'W') ? by : wy;
     queue<MCTS_move *> *Q = new queue<MCTS_move *>();
     // First consider all legal step moves
-    if (legal_step(posx - 1, posy, p)) Q->push(new Quoridor_move(posx - 1, posy, p, ' '));
-    if (legal_step(posx - 2, posy, p)) Q->push(new Quoridor_move(posx - 2, posy, p, ' '));
-    if (legal_step(posx + 1, posy, p)) Q->push(new Quoridor_move(posx + 1, posy, p, ' '));
-    if (legal_step(posx + 2, posy, p)) Q->push(new Quoridor_move(posx + 2, posy, p, ' '));
-    if (legal_step(posx, posy - 1, p)) Q->push(new Quoridor_move(posx, posy - 1, p, ' '));
-    if (legal_step(posx, posy - 2, p)) Q->push(new Quoridor_move(posx, posy - 2, p, ' '));
-    if (legal_step(posx, posy + 1, p)) Q->push(new Quoridor_move(posx, posy + 1, p, ' '));
-    if (legal_step(posx, posy + 2, p)) Q->push(new Quoridor_move(posx, posy + 2, p, ' '));
-    if (legal_step(posx - 1, posy - 1, p)) Q->push(new Quoridor_move(posx - 1, posy - 1, p, ' '));
-    if (legal_step(posx - 1, posy + 1, p)) Q->push(new Quoridor_move(posx - 1, posy + 1, p, ' '));
-    if (legal_step(posx + 1, posy - 1, p)) Q->push(new Quoridor_move(posx + 1, posy - 1, p, ' '));
-    if (legal_step(posx + 1, posy + 1, p)) Q->push(new Quoridor_move(posx + 1, posy + 1, p, ' '));
+    forward_list<MCTS_move *> list = get_legal_step_moves(p);
+    for (auto &move : list) {
+        Q->push(move);
+    }
     // Then consider good wall moves
     // TODO: our encumbrance, their encumbrance, their difference
     // TODO: BUT we shouldn't devote a number of expensive BFSs on every possible move! --> too expensive probably
     return Q;
 }
 
+
 queue<MCTS_move *> *Quoridor_state::actions_to_try() const {
     #define MIN_WALL_ENCUMBRANCE 2
+    // TODO: common stuff with rollout??
     return generate_good_moves(MIN_WALL_ENCUMBRANCE);
 }
-
 
 double evaluate_position(Quoridor_state &s, bool cheap) {
     #define GUESS_WIN_CONF 0.9
@@ -442,9 +499,49 @@ double evaluate_position(Quoridor_state &s, bool cheap) {
     return 0.5;
 }
 
-Quoridor_move *pick_semirandom_move(Quoridor_state &s) {
+bool play_wall_worth_it(Quoridor_state &s) {
     // TODO
-    return nullptr;
+    return false;
+}
+
+Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution<double> &dist, default_random_engine &gen) {
+    #define MOVE_VS_WALL_CHANCE 0.5
+    #define BEST_VS_RANDOM_MOVE 0.8
+
+    if (dist(gen) < MOVE_VS_WALL_CHANCE || !play_wall_worth_it(s)) {
+        // play move
+        if (dist(gen) < BEST_VS_RANDOM_MOVE)
+            return s.get_best_step_move(s.whose_turn());
+        else {
+            vector<MCTS_move *> v = s.get_legal_step_moves2(s.whose_turn());
+            int r = rand() % v.size();
+            for (int i = 0 ; i < v.size() ; i++) {
+                if (i != r) delete v[i];
+            }
+            return (Quoridor_move *) v[r];
+        }
+    } else {
+        /** Idea: Avoid finding all good walls to then just pick one at random
+         * - Put all moves we can't immediately reject in a pool (cheap -> no bfs)
+         * - Shuffle pool and sample without replacement by iterating
+         * - One-by-one check if current move is:
+         *      1. legal (with bfs)
+         *      2. good enough (with bfs)
+         *   and if so play it, else continue searching. If no good move was found return random one.
+         */
+
+        // play wall
+        char p = s.turn;
+        short int posx = (s.turn == 'W') ? s.wx : s.bx;
+        short int posy = (s.turn == 'W') ? s.wy : s.by;
+        short int enemy_posx = (s.turn == 'W') ? s.bx : s.wx;
+        short int enemy_posy = (s.turn == 'W') ? s.by : s.wy;
+        vector<Quoridor_move *> pool;
+
+        // TODO
+
+        return NULL;
+    }
 }
 
 /**
@@ -455,6 +552,10 @@ double Quoridor_state::rollout() const {
     #define MAXSTEPS 100
     #define EVALUATION_THRESHOLD 0.8   // when eval is this skewed then don't simulate any more, return eval
 
+    // random generator
+    default_random_engine generator(time(NULL));
+    srand(time(NULL));
+    uniform_real_distribution<double> dist(0.0, 1.0);
     // copy current state (bypasses const restriction and allows to change state)
     Quoridor_state s(*this);
     bool noerror;
@@ -469,7 +570,7 @@ double Quoridor_state::rollout() const {
             break;
         }
         // otherwise keep simulating until we do or reached a certain depth
-        Quoridor_move *m = pick_semirandom_move(s);
+        Quoridor_move *m = pick_semirandom_move(s, dist, generator);
         noerror = s.play_move(m);
         if (!noerror) {
             cerr << "Error: in rollouts" << endl;

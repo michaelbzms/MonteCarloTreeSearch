@@ -2,6 +2,8 @@
 #define MCTS_QUORIDOR_H
 
 #include "../../mcts/include/state.h"
+#include <forward_list>
+#include <random>
 
 
 struct Quoridor_move : public MCTS_move {
@@ -54,11 +56,15 @@ public:
     char check_winner() const;
     bool legal_move(const Quoridor_move *move);
     bool play_move(const Quoridor_move *move);
-    int get_shortest_path(char player, const Quoridor_move *extra_wall_move = NULL);
+    int get_shortest_path(char player, const Quoridor_move *extra_wall_move = NULL, short int posx = -1, short int posy = -1);
+    forward_list<MCTS_move *> get_legal_step_moves(char p) const;
+    vector<MCTS_move *> get_legal_step_moves2(char p) const;
+    Quoridor_move *get_best_step_move(char player);
     /** Heuristics **/
     queue<MCTS_move *> *generate_good_moves(int min_wall_enc) const;
+    friend bool play_wall_worth_it(Quoridor_state &s);
+    friend Quoridor_move *pick_semirandom_move(Quoridor_state &s, std::uniform_real_distribution<double> &dist, std::default_random_engine &gen);
     friend double evaluate_position(Quoridor_state &s, bool cheap);
-    friend Quoridor_move *pick_semirandom_move(Quoridor_state &s);
     /** Overrides: **/
     bool is_terminal() const override;
     MCTS_state *next_state(const MCTS_move *move) const override;

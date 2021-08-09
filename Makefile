@@ -18,4 +18,4 @@ Quoridor: mcts.o examples/Quoridor/main.cpp examples/Quoridor/Quoridor.cpp examp
 	g++ -o $(QUORIDOR_EXE) $(FLAGS) examples/Quoridor/main.cpp examples/Quoridor/Quoridor.cpp mcts.o
 
 clean:
-	rm -f *.o $(TICTACTOE_EXE)
+	rm -f *.o $(TICTACTOE_EXE) $(QUORIDOR_EXE)
