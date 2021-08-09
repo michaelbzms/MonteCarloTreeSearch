@@ -412,7 +412,8 @@ queue<MCTS_move *> *Quoridor_state::generate_good_moves(int min_wall_enc) const 
     if (legal_step(posx + 1, posy - 1, p)) Q->push(new Quoridor_move(posx + 1, posy - 1, p, ' '));
     if (legal_step(posx + 1, posy + 1, p)) Q->push(new Quoridor_move(posx + 1, posy + 1, p, ' '));
     // Then consider good wall moves
-    // TODO
+    // TODO: our encumbrance, their encumbrance, their difference
+    // TODO: BUT we shouldn't devote a number of expensive BFSs on every possible move! --> too expensive probably
     return Q;
 }
 

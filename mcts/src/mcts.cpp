@@ -87,11 +87,16 @@ MCTS_node *MCTS_node::select_best_child(double c) const {
         double uct, max = -1;
         MCTS_node *argmax = NULL;
         for (auto *child : *children) {
+            double winrate = child->score / ((double) child->number_of_simulations);
+            // If its the opponent's move apply UCT based on his winrate i.e. our loss rate.   <-------
+            if (!state->player1_turn()){
+                winrate = 1.0 - winrate;
+            }
             if (c > 0) {
-                uct = child->score / ((double) child->number_of_simulations) +
+                uct = winrate +
                       c * sqrt(log((double) this->number_of_simulations) / ((double) child->number_of_simulations));
             } else {
-                uct = child->score / child->number_of_simulations;
+                uct = winrate;
             }
             if (uct > max) {
                 max = uct;

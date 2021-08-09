@@ -20,6 +20,7 @@ public:
     queue<MCTS_move *> *actions_to_try() const override;
     double rollout() const override;                        // the rollout simulation in MCTS
     void print() const override;
+    bool player1_turn() const override { return turn == 'x'; }
 };
 
 

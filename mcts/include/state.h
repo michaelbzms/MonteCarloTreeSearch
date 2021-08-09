@@ -28,6 +28,7 @@ public:
     virtual void print() const {
         cout << "Printing not implemented" << endl;
     }
+    virtual bool player1_turn() const = 0;     // MCTS is for two-player games mostly -> (keeps win rate)
 };
 
 
