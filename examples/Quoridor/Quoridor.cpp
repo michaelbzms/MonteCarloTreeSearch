@@ -282,7 +282,7 @@ bool Quoridor_state::legal_move(const Quoridor_move *move) {
 }
 
 bool Quoridor_state::play_move(const Quoridor_move *move) {
-    if (!legal_move(move)) {
+    if (move == NULL || !legal_move(move)) {
         cout << "Invalid command: Illegal move: " << move->sprint() << endl << endl;
         return false;
     }
@@ -422,7 +422,59 @@ queue<MCTS_move *> *Quoridor_state::actions_to_try() const {
     return generate_good_moves(MIN_WALL_ENCUMBRANCE);
 }
 
-double Quoridor_state::rollout() const {
+
+double evaluate_position(Quoridor_state &s, bool cheap) {
+    #define GUESS_WIN_CONF 0.9
+    #define ROOM_FOR_ERROR 1            // Note: Allow more room for error? path doesn't take "jumping" moves into account...
+
+    int white_path = s.get_shortest_path('W');
+    int black_path = s.get_shortest_path('B');
+
+    if (s.bwallsno <= 0 && white_path + ((int) (s.whose_turn() != 'W')) <= black_path - ROOM_FOR_ERROR) {
+        return GUESS_WIN_CONF;
+    }
+    if (s.wwallsno <= 0 && black_path + ((int) (s.whose_turn() != 'B')) <= white_path - ROOM_FOR_ERROR) {
+        return 1.0 - GUESS_WIN_CONF;
+    }
+
     // TODO
-    return 0;
+
+    return 0.5;
+}
+
+Quoridor_move *pick_semirandom_move(Quoridor_state &s) {
+    // TODO
+    return nullptr;
+}
+
+/**
+ * Player1's (== white) win chance is returned. If genmove is for black
+ * then this is dealt with in select_best_child of mcts!
+ */
+double Quoridor_state::rollout() const {
+    #define MAXSTEPS 100
+    #define EVALUATION_THRESHOLD 0.8   // when eval is this skewed then don't simulate any more, return eval
+
+    // copy current state (bypasses const restriction and allows to change state)
+    Quoridor_state s(*this);
+    bool noerror;
+    for (int i = 0 ; i < MAXSTEPS ; i++) {
+        // first check if terminal state
+        if (s.is_terminal()) {
+            return (s.check_winner() == 'W') ? 1.0 : 0.0;
+        }
+        // second check if we can call who is going to win
+        double eval = evaluate_position(s, true);
+        if (eval <= EVALUATION_THRESHOLD && eval >= 1.0 - EVALUATION_THRESHOLD) {
+            break;
+        }
+        // otherwise keep simulating until we do or reached a certain depth
+        Quoridor_move *m = pick_semirandom_move(s);
+        noerror = s.play_move(m);
+        if (!noerror) {
+            cerr << "Error: in rollouts" << endl;
+            break;
+        }
+    }
+    return evaluate_position(s, false);
 }

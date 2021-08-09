@@ -56,7 +56,9 @@ public:
     bool play_move(const Quoridor_move *move);
     int get_shortest_path(char player, const Quoridor_move *extra_wall_move = NULL);
     /** Heuristics **/
-    queue<MCTS_move *> * generate_good_moves(int min_wall_enc) const;
+    queue<MCTS_move *> *generate_good_moves(int min_wall_enc) const;
+    friend double evaluate_position(Quoridor_state &s, bool cheap);
+    friend Quoridor_move *pick_semirandom_move(Quoridor_state &s);
     /** Overrides: **/
     bool is_terminal() const override;
     MCTS_state *next_state(const MCTS_move *move) const override;

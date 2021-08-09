@@ -15,7 +15,9 @@ struct MCTS_move {
 
 
 /** Implement all pure virtual methods. Notes:
- * - rollout() must return something in [0, 1] for UCT to work as intended
+ * - rollout() must return something in [0, 1] for UCT to work as intended and specifically
+ * the winning chance of player1.
+ * - player1 is determined by player1_turn()
  */
 class MCTS_state {
 public:
