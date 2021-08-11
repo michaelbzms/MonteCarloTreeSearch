@@ -38,6 +38,8 @@ class Quoridor_state : public MCTS_state {
      * taking account for any walls */
     short int **wdists;
     short int **bdists;
+    /** moves played */
+    unsigned int move_counter;
     //////////////////////////////////////////
     char change_turn() { turn = (turn == 'W') ? 'B' : 'W'; return turn; }
     bool horizontal_wall(short int x, short int y) const { return walls[x][y] == 'h' || walls[x][y] == 'b'; }
@@ -53,7 +55,9 @@ public:
     Quoridor_state(const Quoridor_state &other);
     ~Quoridor_state() override;
     char whose_turn() const { return turn; }
+    unsigned int get_number_of_turns() const { return move_counter; }
     char check_winner() const;
+    short int remaining_walls(char p) const { return (p == 'W') ? wwallsno : bwallsno; }
     bool legal_move(const Quoridor_move *move);
     bool play_move(const Quoridor_move *move);
     int get_shortest_path(char player, const Quoridor_move *extra_wall_move = NULL, short int posx = -1, short int posy = -1);
@@ -62,7 +66,7 @@ public:
     Quoridor_move *get_best_step_move(char player);
     /** Heuristics **/
     queue<MCTS_move *> *generate_good_moves(int min_wall_enc) const;
-    friend bool play_wall_worth_it(Quoridor_state &s);
+    friend bool force_playwall(Quoridor_state &s);
     friend Quoridor_move *pick_semirandom_move(Quoridor_state &s, std::uniform_real_distribution<double> &dist, std::default_random_engine &gen);
     friend double evaluate_position(Quoridor_state &s, bool cheap);
     /** Overrides: **/

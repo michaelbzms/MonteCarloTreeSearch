@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 #include "Quoridor.h"
 
 
@@ -7,7 +8,7 @@ using namespace std;
 
 
 Quoridor_state::Quoridor_state()
-    : wx(0), wy(4), bx(8), by(4), wwallsno(10), bwallsno(10), turn('W'), wdists(NULL), bdists(NULL) {
+    : move_counter(0), wx(0), wy(4), bx(8), by(4), wwallsno(10), bwallsno(10), turn('W'), wdists(NULL), bdists(NULL) {
     for (int i = 0 ; i < 81 ; i++) {
         walls[i / 9][i % 9] = ' ';
         if (i < 64) wall_connections[i / 8][i % 8] = false;
@@ -15,7 +16,7 @@ Quoridor_state::Quoridor_state()
 }
 
 Quoridor_state::Quoridor_state(const Quoridor_state &other)
-    : wx(other.wx), wy(other.wy), bx(other.bx), by(other.by),
+    : move_counter(other.move_counter), wx(other.wx), wy(other.wy), bx(other.bx), by(other.by),
       wwallsno(other.wwallsno), bwallsno(other.bwallsno), turn(other.turn),
       wdists(NULL), bdists(NULL) {    // TODO: Is it cheaper to copy dists than to potentially recalculate them?
     for (int i = 0 ; i < 81 ; i++) {
@@ -333,6 +334,8 @@ bool Quoridor_state::play_move(const Quoridor_move *move) {
     }
     // change turn
     change_turn();
+    // add to move counter
+    move_counter++;
     return true;
 }
 
@@ -487,6 +490,7 @@ double evaluate_position(Quoridor_state &s, bool cheap) {
     int white_path = s.get_shortest_path('W');
     int black_path = s.get_shortest_path('B');
 
+    // if opponent is out of walls and we have the shortest path then we are almost guaranteed to win
     if (s.bwallsno <= 0 && white_path + ((int) (s.whose_turn() != 'W')) <= black_path - ROOM_FOR_ERROR) {
         return GUESS_WIN_CONF;
     }
@@ -499,48 +503,105 @@ double evaluate_position(Quoridor_state &s, bool cheap) {
     return 0.5;
 }
 
-bool play_wall_worth_it(Quoridor_state &s) {
-    // TODO
+bool force_playwall(Quoridor_state &s) {
+    char p = s.whose_turn();
+    int our_path = s.get_shortest_path(p);
+    short int our_walls = s.remaining_walls(p);
+    int enemy_path = s.get_shortest_path(p == 'W' ? 'B' : 'W');
+    short int enemy_walls = s.remaining_walls(p == 'W' ? 'B' : 'W');
+    // enemy is about to win
+    if (enemy_path <= 1 && our_path > enemy_path) return true;
+    // enemy is much closer to winning than us
+    if (enemy_path <= 2 && our_path > enemy_path + 1 && our_walls >= enemy_walls) return true;
+    if (enemy_path <= 3 && our_path > enemy_path + 2 && our_walls > enemy_walls) return true;
     return false;
 }
 
 Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution<double> &dist, default_random_engine &gen) {
-    #define MOVE_VS_WALL_CHANCE 0.5
+    #define WALL_VS_MOVE_CHANCE 0.5
     #define BEST_VS_RANDOM_MOVE 0.8
+    #define GUIDED_RANDOM_WALL 0.75
 
-    if (dist(gen) < MOVE_VS_WALL_CHANCE || !play_wall_worth_it(s)) {
-        // play move
-        if (dist(gen) < BEST_VS_RANDOM_MOVE)
-            return s.get_best_step_move(s.whose_turn());
-        else {
-            vector<MCTS_move *> v = s.get_legal_step_moves2(s.whose_turn());
-            int r = rand() % v.size();
-            for (int i = 0 ; i < v.size() ; i++) {
-                if (i != r) delete v[i];
-            }
-            return (Quoridor_move *) v[r];
-        }
-    } else {
+    // avoid walls in the first few moves of the game
+    double wall_vs_move_prob = (s.get_number_of_turns() <= 2) ? 0.0 :
+                               (s.get_number_of_turns() <= 6) ? WALL_VS_MOVE_CHANCE / 2 : WALL_VS_MOVE_CHANCE;
+
+    if (s.remaining_walls(s.whose_turn() > 0 && (force_playwall(s) || dist(gen) < wall_vs_move_prob))) {
+        // play wall
         /** Idea: Avoid finding all good walls to then just pick one at random
          * - Put all moves we can't immediately reject in a pool (cheap -> no bfs)
          * - Shuffle pool and sample without replacement by iterating
          * - One-by-one check if current move is:
          *      1. legal (with bfs)
          *      2. good enough (with bfs)
-         *   and if so play it, else continue searching. If no good move was found return random one.
+         *   and if so play it, else continue searching. If no good move was found return random one or step move.
          */
-
-        // play wall
         char p = s.turn;
-        short int posx = (s.turn == 'W') ? s.wx : s.bx;
-        short int posy = (s.turn == 'W') ? s.wy : s.by;
-        short int enemy_posx = (s.turn == 'W') ? s.bx : s.wx;
-        short int enemy_posy = (s.turn == 'W') ? s.by : s.wy;
+        char enemy = (s.turn == 'W') ? 'B' : 'W';
         vector<Quoridor_move *> pool;
-
-        // TODO
-
-        return NULL;
+        pool.reserve(128);
+        for (short int i = 0 ; i < 8 ; i++) {
+            for (short int j = 0 ; j < 8 ; j++) {
+                if (s.legal_wall(i, j, p, true, false)) {    // cheap checks (no check for blocking)
+                    pool.push_back(new Quoridor_move(i, j, p, 'h'));
+                }
+                if (s.legal_wall(i, j, p, false, false)) {   // cheap checks (no check for blocking)
+                    pool.push_back(new Quoridor_move(i, j, p, 'v'));
+                }
+            }
+        }
+        // shuffle pool randomly
+        shuffle(begin(pool), end(pool), gen);
+        if (dist(gen) < GUIDED_RANDOM_WALL) {
+            // random but at least helpful in an obvious way
+            Quoridor_move *wallmove = NULL;
+            // examine moves in (random) order
+            bool accepted = false;
+            for (Quoridor_move *move : pool) {
+                if (!accepted && s.legal_move(move)) {               // full check
+                    int enemy_enc = s.get_shortest_path(enemy, move) - s.get_shortest_path(enemy);
+                    if (enemy_enc > 0) {
+                        int our_enc = s.get_shortest_path(p, move) - s.get_shortest_path(p);
+                        if (enemy_enc > our_enc) {         // must annoy the enemy more than us
+                            wallmove = move;
+                            accepted = true;
+                            continue;             // avoids deleting this move
+                        }
+                    }
+                    // TODO: A wall could be good in other ways as well e.g. blocks an enemy good wall
+                }
+                delete move;                     // delete all not selected moves
+            }
+            // if found a good move play the first one we found goon enough randomly
+            if (wallmove != NULL) return wallmove;
+            // else resort to a step move by not returning here
+        } else {
+            // completely random wall move
+            Quoridor_move *wallmove = NULL;
+            bool accepted = false;
+            for (Quoridor_move *move : pool) {
+                if (!accepted && s.legal_move(move)) {       // return the first legal move
+                    wallmove = move;
+                    accepted = true;
+                    continue;
+                }
+                delete move;
+            }
+            // if a wallmove exists
+            if (wallmove != NULL) return wallmove;
+            // else resort to a step move by not returning here
+        }
+    }
+    // play move
+    if (dist(gen) < BEST_VS_RANDOM_MOVE)
+        return s.get_best_step_move(s.whose_turn());
+    else {
+        vector<MCTS_move *> v = s.get_legal_step_moves2(s.whose_turn());
+        int r = rand() % v.size();
+        for (int i = 0 ; i < v.size() ; i++) {
+            if (i != r) delete v[i];
+        }
+        return (Quoridor_move *) v[r];
     }
 }
 
@@ -549,12 +610,13 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
  * then this is dealt with in select_best_child of mcts!
  */
 double Quoridor_state::rollout() const {
-    #define MAXSTEPS 100
+    #define MAXSTEPS 200
     #define EVALUATION_THRESHOLD 0.8   // when eval is this skewed then don't simulate any more, return eval
 
     // random generator
-    default_random_engine generator(time(NULL));
-    srand(time(NULL));
+    random_device rd;                  // random seed source
+    default_random_engine generator(rd());
+    srand(rd());
     uniform_real_distribution<double> dist(0.0, 1.0);
     // copy current state (bypasses const restriction and allows to change state)
     Quoridor_state s(*this);
