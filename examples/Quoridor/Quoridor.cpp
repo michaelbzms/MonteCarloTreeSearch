@@ -1,7 +1,11 @@
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
+#include <cmath>
 #include "Quoridor.h"
+
+
+#define MAX(A, B) (((A) > (B)) ? A : B)
 
 
 using namespace std;
@@ -498,7 +502,7 @@ queue<MCTS_move *> *Quoridor_state::actions_to_try() const {
 }
 
 double evaluate_position(Quoridor_state &s, bool cheap) {
-    #define GUESS_WIN_CONF 0.9
+    #define GUESS_WIN_CONF 0.95
     #define ROOM_FOR_ERROR 1            // Note: Allow more room for error? path doesn't take "jumping" moves into account...
 
     int white_path = s.get_shortest_path('W');
@@ -511,10 +515,29 @@ double evaluate_position(Quoridor_state &s, bool cheap) {
     if (s.wwallsno <= 0 && black_path + ((int) (s.whose_turn() != 'B')) <= white_path - ROOM_FOR_ERROR) {
         return 1.0 - GUESS_WIN_CONF;
     }
+    // if opponent is almost out of walls and we have walls to stop him then we are probably going to win
+    if (s.bwallsno <= 1 && s.wwallsno >= 2 && white_path + ((int) (s.whose_turn() != 'W')) <= black_path - ROOM_FOR_ERROR) {
+        return GUESS_WIN_CONF - 0.1;
+    }
+    if (s.wwallsno <= 1 && s.bwallsno >= 2 && black_path + ((int) (s.whose_turn() != 'B')) <= white_path - ROOM_FOR_ERROR) {
+        return 1.0 - (GUESS_WIN_CONF - 0.1);
+    }
 
-    // TODO
+    /** heuristic metric for difference in walls
+     * - In [0, 1]. 0 when equal walls, 1 when enemy has 0 walls and we have > 0.
+     */
+    double wallsdiff_metric = 0.0;
+    double max = s.wwallsno > s.bwallsno ? s.wwallsno : s.bwallsno;
+    if (max > 0)
+        wallsdiff_metric = ((s.wwallsno > s.bwallsno) ? +1 : -1) * (((double) pow(s.wwallsno - s.bwallsno, 2)) / ((double) pow(max, 2)));
 
-    return 0.5;
+    /** shortest distance heuristic
+     * - After some lead it doesn't matter if we get even more ahead, we get the full bonus --> keep ur walls?
+     */
+    double path_diff = black_path - white_path + (s.whose_turn() == 'W' ? +0.5 : -0.5);    // bonus for whose turn it is to play
+    double distance_metric = ((double) MAX(path_diff, 10.0)) / 10.0;
+
+    return 0.5 + 0.2 * wallsdiff_metric + 0.2 * distance_metric;   // in [0.1, 0.9]
 }
 
 bool force_playwall(Quoridor_state &s) {
@@ -538,7 +561,7 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
 
     // avoid walls in the first few moves of the game
     double wall_vs_move_prob = (s.get_number_of_turns() <= 2) ? 0.0 :
-                               (s.get_number_of_turns() <= 6) ? WALL_VS_MOVE_CHANCE / 2 : WALL_VS_MOVE_CHANCE;
+                               (s.get_number_of_turns() <= 6) ? (WALL_VS_MOVE_CHANCE / 2) : WALL_VS_MOVE_CHANCE;
 
     if (s.remaining_walls(s.whose_turn() > 0 && (force_playwall(s) || dist(gen) < wall_vs_move_prob))) {
         // play wall
