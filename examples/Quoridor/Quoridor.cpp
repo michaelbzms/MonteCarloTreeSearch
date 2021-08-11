@@ -90,11 +90,11 @@ short int **Quoridor_state::calculate_dists_from(short int x, short int y, bool 
             if (stop_at_goal && is_goal_state(player, n.x + 1)) break;
             Q.push(Node(n.x + 1, n.y, n.dist + 1));
         }
-        if (n.y - 1 >= 0 && !horizontal_wall(n.x, n.y - 1) && dists[n.x][n.y - 1] < 0) {          // left
+        if (n.y - 1 >= 0 && !vertical_wall(n.x, n.y - 1) && dists[n.x][n.y - 1] < 0) {          // left
             dists[n.x][n.y - 1] = n.dist + 1;
             Q.push(Node(n.x, n.y - 1, n.dist + 1));
         }
-        if (n.y + 1 < 9 && !horizontal_wall(n.x, n.y)  && dists[n.x][n.y + 1] < 0) {                 // right
+        if (n.y + 1 < 9 && !vertical_wall(n.x, n.y)  && dists[n.x][n.y + 1] < 0) {                 // right
             dists[n.x][n.y + 1] = n.dist + 1;
             Q.push(Node(n.x, n.y + 1, n.dist + 1));
         }
@@ -284,11 +284,25 @@ bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizonta
     // check if playing this wall blocks a pawn's path (expensive, avoid when possible)
     if (check_blocking && 20 - wwallsno - bwallsno >= 5) {    // (!) there need to be played at least 5 walls already for this to be possible
         // TODO: if there are no walls/edges in both sides then there is no way this wall closed any paths.. -> don't bfs
-        Quoridor_move wallmove(x, y, p, horizontal ? 'h' : 'v');
-        int white_path = get_shortest_path('W', &wallmove);
-        if (white_path < 0) return false;           // white is blocked
-        int black_path = get_shortest_path('B', &wallmove);
-        if (black_path < 0) return false;           // black is blocked
+        // But that is very hard to check so instead do this (check for completely isolated ones:
+        bool isolated = true;
+        for (int i = x - 1 ; i <= x + 1 + ((int) !horizontal) ; i++) {
+            if (i < 0 || i >= 9) continue;       // ignore out-of-bounds areas
+            for (int j = y - 1 ; j <= y + 1 + ((int) horizontal) ; j++) {
+                if (j < 0 || j >= 9) continue;   // ignore out-of-bounds areas
+                if (walls[i][j] != ' ') {
+                    isolated = false;
+                    break;
+                }
+            }
+        }
+        if (!isolated) {           // skip this check for isolated walls
+            Quoridor_move wallmove(x, y, p, horizontal ? 'h' : 'v');
+            int white_path = get_shortest_path('W', &wallmove);
+            if (white_path < 0) return false;           // white is blocked
+            int black_path = get_shortest_path('B', &wallmove);
+            if (black_path < 0) return false;           // black is blocked
+        }
     }
     // if passed all the checks, it's legal
     return true;
@@ -494,33 +508,56 @@ queue<MCTS_move *> *Quoridor_state::generate_good_moves() {
         bool already_used[8][8][2]{false};
         for (short int i = 0; i < 8; i++) {
             for (short int j = 0; j < 8; j++) {
-                for (short int k = 0; k < 2; k++) {                 // orientation
+                for (short int k = 0; k < 2; k++) {                                  // orientation
                     if (legal_wall(i, j, p, k == 0, false)) {   // cheap version (don't double count)
                         // First (!), check if this walls encumbers our enemy more than us
-                        Quoridor_move *wallmove = new Quoridor_move(i, j, (k == 0) ? 'h' : 'v', p);
+                        Quoridor_move *wallmove = new Quoridor_move(i, j, p, (k == 0) ? 'h' : 'v');
                         int enemy_path_with_wall = get_shortest_path(enemy, wallmove);
-                        if (enemy_path_with_wall < 0) continue;     // illegal wall (!)
                         int enemy_enc = enemy_path_with_wall - enemy_path;
                         int our_path_with_wall = get_shortest_path(p, wallmove);
-                        if (our_path_with_wall < 0) continue;       // illegal wall (!)
                         int our_enc = our_path_with_wall - our_path;
-                        // must annoy the enemy more than us
-                        if (enemy_enc > our_enc) {
-                            Q->push(wallmove);
+                        // must annoy the enemy more than us (and be legal when it comes to blocking)
+                        if (!already_used[i][j][k] && enemy_enc > our_enc &&
+                                enemy_path_with_wall >= 0 && our_path_with_wall >= 0) {
                             already_used[i][j][k] = true;
+                            Q->push(wallmove);
                         } else {
                             delete wallmove;
                         }
                         // Then, if this encumbers us significantly more than the enemy check for counter-walls
-                        if (our_enc - enemy_enc >= MIN_ENC_FOR_STOPPING_ENEMY_WALLS) {
-                            // same pos, opposite orientation
-                            Quoridor_move *countermove = new Quoridor_move(i, j, (k == 0) ? 'v' : 'h', p);
+                        if (remaining_walls(enemy) > 0 && our_enc - enemy_enc >= MIN_ENC_FOR_STOPPING_ENEMY_WALLS) {
+                            // same pos, opposite orientation (!)
+                            Quoridor_move *countermove = new Quoridor_move(i, j,  p, (k == 0) ? 'v' : 'h');
                             if (!already_used[i][j][1 - k] && legal_move(countermove)) {         // also checks blocking
+                                already_used[i][j][1 - k] = true;
                                 Q->push(countermove);
                             } else {
                                 delete countermove;
                             }
-                            // TODO: more
+                            // same orientation, moved by 1 square on each side
+                            if (k == 0) {
+                                if (j - 1 >= 0 && !already_used[i][j-1][k] && legal_wall(i, j - 1, p, true)) {
+                                    countermove = new Quoridor_move(i, j - 1, p, 'h');
+                                    already_used[i][j-1][k] = true;
+                                    Q->push(countermove);
+                                }
+                                if (j + 1 < 8 && !already_used[i][j+1][k] && legal_wall(i, j + 1, p, true)) {
+                                    countermove = new Quoridor_move(i, j + 1, p, 'h');
+                                    already_used[i][j+1][k] = true;
+                                    Q->push(countermove);
+                                }
+                            } else if (k == 1) {
+                                if (i - 1 >= 0 && !already_used[i-1][j][k] && legal_wall(i - 1, j, p, false)) {
+                                    countermove = new Quoridor_move(i - 1, j, p, 'v');
+                                    already_used[i-1][j][k] = true;
+                                    Q->push(countermove);
+                                }
+                                if (i + 1 < 8 && !already_used[i+1][j][k] && legal_wall(i + 1, j, p, false)) {
+                                    countermove = new Quoridor_move(i + 1, j, p, 'v');
+                                    already_used[i+1][j][k] = true;
+                                    Q->push(countermove);
+                                }
+                            }
                         }
                     }
                 }
