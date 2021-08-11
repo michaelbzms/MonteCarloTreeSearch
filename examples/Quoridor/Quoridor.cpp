@@ -283,7 +283,7 @@ bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizonta
     if (!horizontal && vertical_wall(x + 1, y)) return false;
     // check if playing this wall blocks a pawn's path (expensive, avoid when possible)
     if (check_blocking && 20 - wwallsno - bwallsno >= 5) {    // (!) there need to be played at least 5 walls already for this to be possible
-        bool blocked = false;
+        // TODO: if there are no walls/edges in both sides then there is no way this wall closed any paths.. -> don't bfs
         Quoridor_move wallmove(x, y, p, horizontal ? 'h' : 'v');
         int white_path = get_shortest_path('W', &wallmove);
         if (white_path < 0) return false;           // white is blocked
@@ -472,16 +472,15 @@ MCTS_state *Quoridor_state::next_state(const MCTS_move *move) const {
 }
 
 /** It is very important to decide which actions we will be considering.
- *  We would like to only consider good moves by using appropriate heuristics.
+ *  We would like to mostly consider good moves by using appropriate heuristics.
  *  This minimizes the branching factor of the search tree while also not investing
  *  in subtrees caused by bad enemy (and also ours) moves, where we would probably be better anyway.
+ *  Although, that is addressed by UCT as well.
  */
-queue<MCTS_move *> *Quoridor_state::generate_good_moves(int min_wall_enc) const {
-    char p = turn;
-    short int posx = (turn == 'W') ? wx : bx;
-    short int posy = (turn == 'W') ? wy : by;
-    short int enemy_posx = (turn == 'W') ? bx : wx;
-    short int enemy_posy = (turn == 'W') ? by : wy;
+queue<MCTS_move *> *Quoridor_state::generate_good_moves() {
+    #define MIN_ENC_FOR_STOPPING_ENEMY_WALLS 3
+
+    char p = turn, enemy = (turn == 'W') ? 'B' : 'W';
     queue<MCTS_move *> *Q = new queue<MCTS_move *>();
     // First consider all legal step moves
     forward_list<MCTS_move *> list = get_legal_step_moves(p);
@@ -489,16 +488,54 @@ queue<MCTS_move *> *Quoridor_state::generate_good_moves(int min_wall_enc) const 
         Q->push(move);
     }
     // Then consider good wall moves
-    // TODO: our encumbrance, their encumbrance, their difference
-    // TODO: BUT we shouldn't devote a number of expensive BFSs on every possible move! --> too expensive probably
+    if (remaining_walls(p) > 0) {
+        int our_path = get_shortest_path(p);
+        int enemy_path = get_shortest_path(enemy);
+        bool already_used[8][8][2]{false};
+        for (short int i = 0; i < 8; i++) {
+            for (short int j = 0; j < 8; j++) {
+                for (short int k = 0; k < 2; k++) {                 // orientation
+                    if (legal_wall(i, j, p, k == 0, false)) {   // cheap version (don't double count)
+                        // First (!), check if this walls encumbers our enemy more than us
+                        Quoridor_move *wallmove = new Quoridor_move(i, j, (k == 0) ? 'h' : 'v', p);
+                        int enemy_path_with_wall = get_shortest_path(enemy, wallmove);
+                        if (enemy_path_with_wall < 0) continue;     // illegal wall (!)
+                        int enemy_enc = enemy_path_with_wall - enemy_path;
+                        int our_path_with_wall = get_shortest_path(p, wallmove);
+                        if (our_path_with_wall < 0) continue;       // illegal wall (!)
+                        int our_enc = our_path_with_wall - our_path;
+                        // must annoy the enemy more than us
+                        if (enemy_enc > our_enc) {
+                            Q->push(wallmove);
+                            already_used[i][j][k] = true;
+                        } else {
+                            delete wallmove;
+                        }
+                        // Then, if this encumbers us significantly more than the enemy check for counter-walls
+                        if (our_enc - enemy_enc >= MIN_ENC_FOR_STOPPING_ENEMY_WALLS) {
+                            // same pos, opposite orientation
+                            Quoridor_move *countermove = new Quoridor_move(i, j, (k == 0) ? 'v' : 'h', p);
+                            if (!already_used[i][j][1 - k] && legal_move(countermove)) {         // also checks blocking
+                                Q->push(countermove);
+                            } else {
+                                delete countermove;
+                            }
+                            // TODO: more
+                        }
+                    }
+                }
+            }
+        }
+    }
     return Q;
 }
 
 
 queue<MCTS_move *> *Quoridor_state::actions_to_try() const {
-    #define MIN_WALL_ENCUMBRANCE 2
-    // TODO: common stuff with rollout??
-    return generate_good_moves(MIN_WALL_ENCUMBRANCE);
+    // TODO: hack to avoid const error. This is a problem design-wise...
+    // Note: actions_to_try() should probably be const in superclass but it would be very inefficient to be so here because
+    // we would need to recalculate paths every time!
+    return const_cast<Quoridor_state *>(this)->generate_good_moves();
 }
 
 double evaluate_position(Quoridor_state &s, bool cheap) {

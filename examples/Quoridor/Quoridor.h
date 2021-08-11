@@ -71,7 +71,7 @@ public:
     vector<MCTS_move *> get_legal_step_moves2(char p) const;
     Quoridor_move *get_best_step_move(char player);
     /** Heuristics **/
-    queue<MCTS_move *> *generate_good_moves(int min_wall_enc) const;
+    queue<MCTS_move *> *generate_good_moves();
     friend bool force_playwall(Quoridor_state &s);
     friend Quoridor_move *pick_semirandom_move(Quoridor_state &s, std::uniform_real_distribution<double> &dist, std::default_random_engine &gen);
     friend double evaluate_position(Quoridor_state &s, bool cheap);
