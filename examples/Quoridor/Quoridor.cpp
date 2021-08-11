@@ -36,7 +36,12 @@ char Quoridor_state::check_winner() const {
     return ' ';
 }
 
-short int **Quoridor_state::calculate_dists_from(short int x, short int y) {
+short int **Quoridor_state::calculate_dists_from(short int x, short int y, bool stop_at_goal, char player) {
+    /** Important note:
+     * - stop_at_goal=true should be used when we only care about 1 square of the endzone (the minimum one)
+     * being calculated and we don't really care for the rest of the board (which is typically the case)
+     * - In that case we also need the player parameter. Otherwise it won't be used.
+     */
     if (x < 0 || x >= 9 || y < 0 || y >= 9) {
         cerr << "Error: Invalid coordinates in calculate_dists_from()" << endl;   // should not happen
         return NULL;
@@ -49,6 +54,12 @@ short int **Quoridor_state::calculate_dists_from(short int x, short int y) {
             dists[i][j] = -1;   // < 0 signifies unreachable squares
         }
     }
+    // lambda for goal node check
+    auto is_goal_state = [](char p, short int x) -> bool {
+        if (p == 'W') return x == 8;
+        if (p == 'B') return x == 0;
+        return false;
+    };
     // perform bfs on the board
     struct Node {
         short int x, y;
@@ -63,13 +74,16 @@ short int **Quoridor_state::calculate_dists_from(short int x, short int y) {
         // get new node
         Node n = Q.front();
         Q.pop();
+        if (stop_at_goal && is_goal_state(player, n.x)) break;
         // add neighbours to queue if not already explored
         if (n.x - 1 >= 0 && !horizontal_wall(n.x - 1, n.y) && dists[n.x - 1][n.y] < 0) {          // up
             dists[n.x - 1][n.y] = n.dist + 1;
+            if (stop_at_goal && is_goal_state(player, n.x - 1)) break;
             Q.push(Node(n.x - 1, n.y, n.dist + 1));
         }
         if (n.x + 1 < 9 && !horizontal_wall(n.x, n.y) && dists[n.x + 1][n.y] < 0) {                  // down
             dists[n.x + 1][n.y] = n.dist + 1;
+            if (stop_at_goal && is_goal_state(player, n.x + 1)) break;
             Q.push(Node(n.x + 1, n.y, n.dist + 1));
         }
         if (n.y - 1 >= 0 && !horizontal_wall(n.x, n.y - 1) && dists[n.x][n.y - 1] < 0) {          // left
@@ -91,7 +105,7 @@ int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wa
         // if not already calculated on a previous call
         if (wdists == NULL && extra_wall_move == NULL) {
             // calculate dists to every square using BFS (expensive)
-            wdists = calculate_dists_from(wx, wy);
+            wdists = calculate_dists_from(wx, wy, true, 'W');
         }
         endzone = 8;
         if (posx == -1 || posy == -1) {
@@ -103,7 +117,7 @@ int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wa
         // if not already calculated on a previous call
         if (bdists == NULL && extra_wall_move == NULL) {
             // calculate dists to every square using BFS (expensive)
-            bdists = calculate_dists_from(bx, by);
+            bdists = calculate_dists_from(bx, by, true, 'B');
         }
         endzone = 0;
         if (posx == -1 || posy == -1) {
@@ -129,7 +143,7 @@ int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wa
         add_wall(extra_wall_move->x, extra_wall_move->y, horizontal);
         add_wall(extra_wall_move->x + ((int) !horizontal), extra_wall_move->y + ((int) horizontal), horizontal);
         // calc dists
-        dists = calculate_dists_from(posx, posy);
+        dists = calculate_dists_from(posx, posy, true, player);
         // remove wall
         remove_wall(extra_wall_move->x, extra_wall_move->y, horizontal);
         remove_wall(extra_wall_move->x + ((int) !horizontal), extra_wall_move->y + ((int) horizontal), horizontal);

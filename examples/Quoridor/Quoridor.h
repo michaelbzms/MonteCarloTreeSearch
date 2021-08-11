@@ -6,6 +6,12 @@
 #include <random>
 
 
+/** TODOs-Ideas:
+ * - If all I need is the shortest path to a goal state then A* search could be faster than BFS with a heuristic
+ * that prioritizes moves towards the endzone (i.e. up for black, down for white)?
+ */
+
+
 struct Quoridor_move : public MCTS_move {
     short int x, y;
     char player;
@@ -48,7 +54,7 @@ class Quoridor_state : public MCTS_state {
     void remove_wall(short int x, short int y, bool horizontal);
     bool legal_step(short int x, short int y, char p) const;
     bool legal_wall(short int x, short int y, char p, bool horizontal, bool check_blocking = true);
-    short int **calculate_dists_from(short int x, short int y);
+    short int **calculate_dists_from(short int x, short int y, bool stop_at_goal, char player);
     static void reset_dists(short int **&dists);
 public:
     Quoridor_state();
