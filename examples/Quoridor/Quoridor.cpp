@@ -80,7 +80,7 @@ short int **Quoridor_state::calculate_dists_from(short int x, short int y, bool 
         Q.pop();
         if (stop_at_goal && is_goal_state(player, n.x)) break;
         // add neighbours to queue if not already explored
-        if (n.x - 1 >= 0 && !horizontal_wall(n.x - 1, n.y) && dists[n.x - 1][n.y] < 0) {          // up
+        if (n.x - 1 >= 0 && !horizontal_wall(n.x - 1, n.y) && dists[n.x - 1][n.y] < 0) {             // up
             dists[n.x - 1][n.y] = n.dist + 1;
             if (stop_at_goal && is_goal_state(player, n.x - 1)) break;
             Q.push(Node(n.x - 1, n.y, n.dist + 1));
@@ -90,48 +90,53 @@ short int **Quoridor_state::calculate_dists_from(short int x, short int y, bool 
             if (stop_at_goal && is_goal_state(player, n.x + 1)) break;
             Q.push(Node(n.x + 1, n.y, n.dist + 1));
         }
-        if (n.y - 1 >= 0 && !vertical_wall(n.x, n.y - 1) && dists[n.x][n.y - 1] < 0) {          // left
+        if (n.y - 1 >= 0 && !vertical_wall(n.x, n.y - 1) && dists[n.x][n.y - 1] < 0) {              // left
             dists[n.x][n.y - 1] = n.dist + 1;
             Q.push(Node(n.x, n.y - 1, n.dist + 1));
         }
-        if (n.y + 1 < 9 && !vertical_wall(n.x, n.y)  && dists[n.x][n.y + 1] < 0) {                 // right
+        if (n.y + 1 < 9 && !vertical_wall(n.x, n.y) && dists[n.x][n.y + 1] < 0) {                 // right
             dists[n.x][n.y + 1] = n.dist + 1;
             Q.push(Node(n.x, n.y + 1, n.dist + 1));
         }
     }
+//    for (int i = 0 ; i < 9 ; i++) {
+//        for (int j = 0 ; j < 9 ; j++) {
+//            cout << dists[i][j] << " ";
+//        }
+//        cout << endl;
+//    }
+
     return dists;
 }
 
 int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wall_move, short int posx, short int posy) {
-    int endzone;
+    int endzone = (player == 'W') ? 8 : 0;
     short int **dists = NULL;
-    if (player == 'W') {
-        // if not already calculated on a previous call
-        if (wdists == NULL && extra_wall_move == NULL) {
-            // calculate dists to every square using BFS (expensive)
-            wdists = calculate_dists_from(wx, wy, true, 'W');
+    if (posx == -1 || posy == -1) {
+        if (player == 'W') {
+            // if not already calculated on a previous call
+            if (wdists == NULL && extra_wall_move == NULL) {
+                // calculate dists to every square using BFS (expensive)
+                wdists = calculate_dists_from(wx, wy, true, 'W');
+            } else if (extra_wall_move != NULL) {
+                posx = wx;
+                posy = wy;
+            }
+            dists = wdists;
+        } else if (player == 'B') {
+            // if not already calculated on a previous call
+            if (bdists == NULL && extra_wall_move == NULL) {
+                // calculate dists to every square using BFS (expensive)
+                bdists = calculate_dists_from(bx, by, true, 'B');
+            } else if (extra_wall_move != NULL) {
+                posx = bx;
+                posy = by;
+            }
+            dists = bdists;
+        } else {
+            cerr << "Invalid player arg" << endl;   // should not happen
+            return -1;
         }
-        endzone = 8;
-        if (posx == -1 || posy == -1) {
-            posx = wx;
-            posy = wy;
-        }
-        dists = wdists;
-    } else if (player == 'B') {
-        // if not already calculated on a previous call
-        if (bdists == NULL && extra_wall_move == NULL) {
-            // calculate dists to every square using BFS (expensive)
-            bdists = calculate_dists_from(bx, by, true, 'B');
-        }
-        endzone = 0;
-        if (posx == -1 || posy == -1) {
-            posx = bx;
-            posy = by;
-        }
-        dists = bdists;
-    } else {
-        cerr << "Invalid player arg" << endl;   // should not happen
-        return -1;
     }
     // if dists is NULL then we need to re-calculate dists separately (disregarding previous value)
     if (extra_wall_move != NULL) {
@@ -151,6 +156,9 @@ int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wa
         // remove wall
         remove_wall(extra_wall_move->x, extra_wall_move->y, horizontal);
         remove_wall(extra_wall_move->x + ((int) !horizontal), extra_wall_move->y + ((int) horizontal), horizontal);
+    } else if (extra_wall_move == NULL && posx != -1 && posy != -1){
+        // calc dists from custom posx, posy
+        dists = calculate_dists_from(posx, posy, true, player);
     }
     // scan the end-zone and keep the minimum
     #define BIGNUM 9999999
@@ -160,9 +168,9 @@ int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wa
             min = dists[endzone][i];
         }
     }
-    if (min == BIGNUM) min = -1;     // something < 0  ->  no path exists
-    if (extra_wall_move != NULL) {
-        reset_dists(dists);      // delete from heap
+    if (min == BIGNUM) min = -1;         // something < 0  ->  no path exists
+    if (extra_wall_move != NULL || !(posx == -1 || posy == -1)) {
+        reset_dists(dists);          // delete from heap
     }
     return min;
 }
@@ -476,7 +484,7 @@ Quoridor_move *Quoridor_state::get_best_step_move(char player) {
 
 bool Quoridor_state::is_terminal() const {
     char winner = check_winner();
-    return winner != 'W' && winner != 'B';
+    return winner == 'W' || winner == 'B';
 }
 
 MCTS_state *Quoridor_state::next_state(const MCTS_move *move) const {
@@ -629,9 +637,9 @@ bool force_playwall(Quoridor_state &s) {
 }
 
 Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution<double> &dist, default_random_engine &gen) {
-    #define WALL_VS_MOVE_CHANCE 0.5
-    #define BEST_VS_RANDOM_MOVE 0.8
-    #define GUIDED_RANDOM_WALL 0.75
+    #define WALL_VS_MOVE_CHANCE 0.4
+    #define BEST_VS_RANDOM_MOVE 0.9
+    #define GUIDED_RANDOM_WALL 0.8
 
     // avoid walls in the first few moves of the game
     double wall_vs_move_prob = (s.get_number_of_turns() <= 2) ? 0.0 :
@@ -704,9 +712,10 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
         }
     }
     // play move
-    if (dist(gen) < BEST_VS_RANDOM_MOVE)
+    if (dist(gen) < BEST_VS_RANDOM_MOVE) {
+        cout << "BEST MOVE" << endl;
         return s.get_best_step_move(s.whose_turn());
-    else {
+    } else {
         vector<MCTS_move *> v = s.get_legal_step_moves2(s.whose_turn());
         int r = rand() % v.size();
         for (int i = 0 ; i < v.size() ; i++) {
@@ -722,28 +731,31 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
  */
 double Quoridor_state::rollout() const {
     #define MAXSTEPS 200
-    #define EVALUATION_THRESHOLD 0.8   // when eval is this skewed then don't simulate any more, return eval
+    #define EVALUATION_THRESHOLD 0.8     // when eval is this skewed then don't simulate any more, return eval
 
     // random generator
-    random_device rd;                  // random seed source
-    default_random_engine generator(rd());
-    srand(rd());
+//    random_device rd;                  // random seed source
+    default_random_engine generator(time(NULL));
+    srand(time(NULL));
     uniform_real_distribution<double> dist(0.0, 1.0);
     // copy current state (bypasses const restriction and allows to change state)
     Quoridor_state s(*this);
     bool noerror;
     for (int i = 0 ; i < MAXSTEPS ; i++) {
+        // TODO: debug
+        s.print();
         // first check if terminal state
         if (s.is_terminal()) {
             return (s.check_winner() == 'W') ? 1.0 : 0.0;
         }
         // second check if we can call who is going to win
         double eval = evaluate_position(s, true);
-        if (eval <= EVALUATION_THRESHOLD && eval >= 1.0 - EVALUATION_THRESHOLD) {
+        if (eval <= 1.0 - EVALUATION_THRESHOLD && eval >= EVALUATION_THRESHOLD) {
             break;
         }
         // otherwise keep simulating until we do or reached a certain depth
         Quoridor_move *m = pick_semirandom_move(s, dist, generator);
+        cout << "Semirandom move: " << m->sprint() << endl;
         noerror = s.play_move(m);
         if (!noerror) {
             cerr << "Error: in rollouts" << endl;

@@ -194,6 +194,7 @@ void MCTS_node::print_stats() const {
     cout << "___ INFO _______________________" << endl
          << "Tree size: " << size << endl
          << "Number of simulations: " << number_of_simulations << endl
+         << "Branching factor at root: " << children->size() << endl
          << "Chances of winning: " << setprecision(4) << 100.0 * (score / number_of_simulations) << "%" << endl;
     cout << "________________________________" << endl;
 }

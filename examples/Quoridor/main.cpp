@@ -122,6 +122,10 @@ int main() {
             delete state;
             state = new Quoridor_state();
         }
+        else if (command == "rollout") {
+            double res = state->rollout();
+            cout << "Rollout result: " << res << endl;
+        }
         else {
             cout << "? unknown command" << endl << endl;
         }
