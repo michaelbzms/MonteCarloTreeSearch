@@ -45,6 +45,9 @@ int main() {
     if (auto_print) {
         state->print();
     }
+    /** Game Tree for AI (works for both sides) **/
+    MCTS_tree *game_tree = new MCTS_tree(new Quoridor_state());    // Important: do not use the same state that we change in main loop
+
     cout << (state->whose_turn() == 'W' ? "White's move:" : "Black's move:") << endl << PROMPT;
     flush(cout);
     while (cin >> command) {
@@ -85,6 +88,8 @@ int main() {
                         cout << move.sprint() << endl << endl;
                         // check if winning move
                         winner = state->check_winner();
+                        // advance game tree
+                        game_tree->advance_tree(&move);
                     }
                 }
             }
@@ -106,7 +111,11 @@ int main() {
                     // play the move
                     Quoridor_move move(x, y, p, t);
                     succ = state->play_move(&move);
-                    if (succ) cout << move.sprint() << endl << endl;
+                    if (succ) {
+                        cout << move.sprint() << endl << endl;
+                        // advance game tree
+                        game_tree->advance_tree(&move);
+                    }
                 }
             }
         }
@@ -115,17 +124,46 @@ int main() {
                 cin.ignore(512, '\n');
                 cout << "Game has already finished." << endl << endl;
             } else {
-                // TODO
-                cout << "Not implemented yet" << endl << endl;
+                // generate AI move
+                #define MAXITER 100000
+                #define MAXSECONDS 15
+
+                // grow tree by thinking ahead and sampling monte carlo rollouts
+                game_tree->grow_tree(MAXITER, MAXSECONDS);
+                game_tree->print_stats();   // debug
+
+                // select best child node at root level
+                MCTS_node *best_child = game_tree->select_best_child();
+                if (best_child == NULL) {
+                    cerr << "Warning: Could not find best child. Tree has no children? Possible terminal node" << endl << endl;
+                }
+                const Quoridor_move *best_move = (const Quoridor_move *) best_child->get_move();
+
+                // advance the tree so the selected child node is now the root
+                game_tree->advance_tree(best_move);
+
+                // play AI move
+                bool succ = state->play_move(best_move);
+                if (!succ) {
+                    cerr << "Warning: AI generated illegal move: " <<  best_move->sprint() << endl << endl;
+                } else {
+                    // print AI's move
+                    cout << best_move->sprint() << endl << endl;
+                }
+
                 // check if winning move
                 winner = state->check_winner();
             }
+        } else if (command == "stats") {
+            game_tree->print_stats();
         }
         else if (command == "clearboard" || command == "reset") {
             delete state;
             state = new Quoridor_state();
+            delete game_tree;
+            game_tree = new MCTS_tree(new Quoridor_state());
         }
-        else if (command == "rollout") {
+        else if (command == "rollout") {   // for debug
             double res = state->rollout();
             cout << "Rollout result: " << res << endl;
         }

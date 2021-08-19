@@ -81,6 +81,7 @@ unsigned int MCTS_node::get_size() const {
 }
 
 MCTS_node *MCTS_node::select_best_child(double c) const {
+    /** selects best child based on the winrate of whose turn it is to play */
     if (children->empty()) return NULL;
     else if (children->size() == 1) return children->at(0);
     else {
@@ -160,6 +161,9 @@ MCTS_tree::~MCTS_tree() {
 void MCTS_tree::grow_tree(int max_iter, double max_time_in_seconds) {
     MCTS_node *node;
     double dt;
+    #ifdef DEBUG
+    cout << "Growing tree..." << endl;
+    #endif
     time_t start_t, now_t;
     time(&start_t);
     for (int i = 0 ; i < max_iter ; i++){
@@ -172,11 +176,16 @@ void MCTS_tree::grow_tree(int max_iter, double max_time_in_seconds) {
         dt = difftime(now_t, start_t);
         if (dt > max_time_in_seconds) {
             #ifdef DEBUG
-            cout << "Made " << (i + 1) << " iterations in " << dt << " seconds!" << endl;
+            cout << "Early stopping: Made " << (i + 1) << " iterations in " << dt << " seconds." << endl;
             #endif
             break;
         }
     }
+    #ifdef DEBUG
+    time(&now_t);
+    dt = difftime(now_t, start_t);
+    cout << "Finished in " << dt << " seconds." << endl;
+    #endif
 }
 
 unsigned int MCTS_tree::get_size() const {
@@ -190,7 +199,10 @@ const MCTS_move *MCTS_node::get_move() const {
 const MCTS_state *MCTS_node::get_current_state() const { return state; }
 
 void MCTS_node::print_stats() const {
-    if (number_of_simulations == 0) return;
+    if (number_of_simulations == 0) {
+        cout << "Tree not expanded yet" << endl;
+        return;
+    }
     cout << "___ INFO _______________________" << endl
          << "Tree size: " << size << endl
          << "Number of simulations: " << number_of_simulations << endl

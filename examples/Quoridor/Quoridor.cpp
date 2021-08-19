@@ -293,7 +293,7 @@ bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizonta
     if (horizontal && horizontal_wall(x, y + 1)) return false;
     if (!horizontal && vertical_wall(x + 1, y)) return false;
     // check if playing this wall blocks a pawn's path (expensive, avoid when possible)
-    if (check_blocking && 20 - wwallsno - bwallsno >= 5) {    // (!) there need to be played at least 5 walls already for this to be possible
+    if (check_blocking) {
         // TODO: if there are no walls/edges in both sides then there is no way this wall closed any paths.. -> don't bfs
         // But that is very hard to check so instead do this (check for completely isolated ones:
         bool isolated = true;
@@ -334,7 +334,7 @@ bool Quoridor_state::legal_move(const Quoridor_move *move) {
 
 bool Quoridor_state::play_move(const Quoridor_move *move) {
     if (move == NULL || !legal_move(move)) {
-        cout << "Invalid command: Illegal move: " << move->sprint() << endl << endl;
+        cout << "Invalid command: Illegal move: " << ((move != NULL) ? move->sprint() : "NULL") << endl << endl;
         return false;
     }
     if (move->type == 'h' || move->type == 'v') {   // wall move
@@ -478,6 +478,10 @@ Quoridor_move *Quoridor_state::get_best_step_move(char player) {
         } else {
             delete m;          // delete all except argmin
         }
+    }
+    if (argmin == NULL) {
+        cerr << "Warning: Could not find best move in this state:" << endl;
+        this->print();
     }
     list.clear();              // TODO: is this needed?
     return argmin;
@@ -641,8 +645,8 @@ bool force_playwall(Quoridor_state &s) {
 
 Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution<double> &dist, default_random_engine &gen) {
     #define WALL_VS_MOVE_CHANCE 0.4
-    #define BEST_VS_RANDOM_MOVE 0.9
-    #define GUIDED_RANDOM_WALL 0.8
+    #define BEST_VS_RANDOM_MOVE 0.8
+    #define GUIDED_RANDOM_WALL 0.75
 
     char p = s.turn;
     char enemy = (s.turn == 'W') ? 'B' : 'W';
@@ -726,6 +730,7 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
         }
         return (Quoridor_move *) v[r];
     }
+    cerr << "Warning: could not find a legal move?" << endl << endl;
 }
 
 /**
@@ -740,13 +745,16 @@ double Quoridor_state::rollout() const {
     // random generator
     // random_device rd;                  // random seed source
 
+    // TODO: BUG: Illegal walls that close all enemy paths are somehow allowed in rollouts!
+
     uniform_real_distribution<double> dist(0.0, 1.0);
     // copy current state (bypasses const restriction and allows to change state)
     Quoridor_state s(*this);
     bool noerror;
     for (int i = 0 ; i < MAXSTEPS ; i++) {
-        // TODO: debug
+#ifdef DDEBUG
         s.print();
+#endif
         // first check if terminal state
         if (s.is_terminal()) {
             return (s.check_winner() == 'W') ? 1.0 : 0.0;
@@ -758,7 +766,12 @@ double Quoridor_state::rollout() const {
         }
         // otherwise keep simulating until we do or reached a certain depth
         Quoridor_move *m = pick_semirandom_move(s, dist, generator);
+        if (!s.legal_move(m)) {
+            cout << "Picked illegal move intentionally (so not legal_move()'s fault)!" << endl;
+        }
+#ifdef DDEBUG
         cout << "Semirandom move: " << m->sprint() << endl;
+#endif
         noerror = s.play_move(m);
         if (!noerror) {
             cerr << "Error: in rollouts" << endl;
