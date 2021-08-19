@@ -11,6 +11,9 @@
 using namespace std;
 
 
+default_random_engine Quoridor_state::generator = default_random_engine(time(NULL));
+
+
 Quoridor_state::Quoridor_state()
     : move_counter(0), wx(0), wy(4), bx(8), by(4), wwallsno(10), bwallsno(10), turn('W'), wdists(NULL), bdists(NULL) {
     for (int i = 0 ; i < 81 ; i++) {
@@ -24,7 +27,7 @@ Quoridor_state::Quoridor_state(const Quoridor_state &other)
       wwallsno(other.wwallsno), bwallsno(other.bwallsno), turn(other.turn),
       wdists(NULL), bdists(NULL) {    // TODO: Is it cheaper to copy dists than to potentially recalculate them?
     for (int i = 0 ; i < 81 ; i++) {
-        walls[i / 9][i % 9] = other.walls[i / 8][i % 8];
+        walls[i / 9][i % 9] = other.walls[i / 9][i % 9];
         if (i < 64) wall_connections[i / 8][i % 8] = other.wall_connections[i / 8][i % 8];
     }
 }
@@ -641,6 +644,9 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
     #define BEST_VS_RANDOM_MOVE 0.9
     #define GUIDED_RANDOM_WALL 0.8
 
+    char p = s.turn;
+    char enemy = (s.turn == 'W') ? 'B' : 'W';
+
     // avoid walls in the first few moves of the game
     double wall_vs_move_prob = (s.get_number_of_turns() <= 2) ? 0.0 :
                                (s.get_number_of_turns() <= 6) ? (WALL_VS_MOVE_CHANCE / 2) : WALL_VS_MOVE_CHANCE;
@@ -655,8 +661,6 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
          *      2. good enough (with bfs)
          *   and if so play it, else continue searching. If no good move was found return random one or step move.
          */
-        char p = s.turn;
-        char enemy = (s.turn == 'W') ? 'B' : 'W';
         vector<Quoridor_move *> pool;
         pool.reserve(128);
         for (short int i = 0 ; i < 8 ; i++) {
@@ -712,8 +716,7 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
         }
     }
     // play move
-    if (dist(gen) < BEST_VS_RANDOM_MOVE) {
-        cout << "BEST MOVE" << endl;
+    if (s.remaining_walls(enemy) == 0 || dist(gen) < BEST_VS_RANDOM_MOVE) {
         return s.get_best_step_move(s.whose_turn());
     } else {
         vector<MCTS_move *> v = s.get_legal_step_moves2(s.whose_turn());
@@ -733,10 +736,10 @@ double Quoridor_state::rollout() const {
     #define MAXSTEPS 200
     #define EVALUATION_THRESHOLD 0.8     // when eval is this skewed then don't simulate any more, return eval
 
+    // TODO: is it random enough? Or would very close time(NULL) calls return the same?
     // random generator
-//    random_device rd;                  // random seed source
-    default_random_engine generator(time(NULL));
-    srand(time(NULL));
+    // random_device rd;                  // random seed source
+
     uniform_real_distribution<double> dist(0.0, 1.0);
     // copy current state (bypasses const restriction and allows to change state)
     Quoridor_state s(*this);

@@ -46,6 +46,8 @@ class Quoridor_state : public MCTS_state {
     short int **bdists;
     /** moves played */
     unsigned int move_counter;
+    /** randomness for rollouts */
+    static default_random_engine generator;
     //////////////////////////////////////////
     char change_turn() { turn = (turn == 'W') ? 'B' : 'W'; return turn; }
     bool horizontal_wall(short int x, short int y) const { return walls[x][y] == 'h' || walls[x][y] == 'b'; }

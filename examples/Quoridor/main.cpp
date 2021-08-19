@@ -30,6 +30,9 @@ bool parse_coords(const string &s, int &x, int &y) {
 
 
 int main() {
+    /** Important to set seed once. Quoridor_state won't do this! (TODO) **/
+    srand(time(NULL));
+
     cout << "============================================================" << endl
          << "===============╣    Welcome to Quoridor!    ╠===============" << endl
          << "============================================================" << endl << endl;
