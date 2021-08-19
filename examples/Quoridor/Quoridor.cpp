@@ -248,30 +248,38 @@ bool Quoridor_state::legal_step(short int x, short int y, char p) const {
                 enemy_posx == posx && enemy_posy == posy + 1) return true;      // right-right
         }
     }
-    // check diagonal moves
+    // check diagonal moves  TODO this is wrong
     if (x >= 0 && y >= 0 && x == posx - 1 && y == posy - 1) {                   // up-left
         if (enemy_posx == posx - 1 && enemy_posy == posy &&
-            (posx - 2 < 0 || horizontal_wall(posx - 2, posy))) return true;
+            (posx - 2 < 0 || horizontal_wall(posx - 2, posy)) &&
+            !vertical_wall(posx - 1, posy - 1)) return true;
         if (enemy_posx == posx && enemy_posy == posy - 1 &&
-            (posy - 2 < 0 || vertical_wall(posx, posy - 2))) return true;
+            (posy - 2 < 0 || vertical_wall(posx, posy - 2)) &&
+            !horizontal_wall(posx - 1, posy - 1)) return true;
     }
     if (x >= 0 && y < 9 && x == posx - 1 && y == posy + 1) {                    // up-right
         if (enemy_posx == posx - 1 && enemy_posy == posy &&
-            (posx - 2 < 0 || horizontal_wall(posx - 2, posy))) return true;
+            (posx - 2 < 0 || horizontal_wall(posx - 2, posy)) &&
+            !vertical_wall(posx - 1, posy)) return true;
         if (enemy_posx == posx && enemy_posy == posy + 1 &&
-            (posy + 2 >= 9 || vertical_wall(posx, posy + 1))) return true;
+            (posy + 2 >= 9 || vertical_wall(posx, posy + 1)) &&
+            !horizontal_wall(posx - 1, posy + 1)) return true;
     }
     if (x < 9 && y >= 0 && x == posx + 1 && y == posy - 1) {                   // down-left
         if (enemy_posx == posx + 1 && enemy_posy == posy &&
-            (posx + 2 >= 9 || horizontal_wall(posx + 1, posy))) return true;
+            (posx + 2 >= 9 || horizontal_wall(posx + 1, posy)) &&
+            !vertical_wall(posx + 1, posy - 1)) return true;
         if (enemy_posx == posx && enemy_posy == posy - 1 &&
-            (posy - 2 < 0 || vertical_wall(posx, posy - 2))) return true;
+            (posy - 2 < 0 || vertical_wall(posx, posy - 2)) &&
+            !horizontal_wall(posx, posy - 1)) return true;
     }
     if (x < 9 && y < 9 && x == posx + 1 && y == posy + 1) {                   // down-right
         if (enemy_posx == posx + 1 && enemy_posy == posy &&
-            (posx + 2 >= 9 || horizontal_wall(posx + 1, posy))) return true;
+            (posx + 2 >= 9 || horizontal_wall(posx + 1, posy)) &&
+            !vertical_wall(posx + 1, posy)) return true;
         if (enemy_posx == posx && enemy_posy == posy + 1 &&
-            (posy + 2 >= 9 || vertical_wall(posx, posy + 1))) return true;
+            (posy + 2 >= 9 || vertical_wall(posx, posy + 1)) &&
+            !horizontal_wall(posx, posy + 1)) return true;
     }
     return false;
 }
@@ -326,7 +334,7 @@ bool Quoridor_state::legal_move(const Quoridor_move *move) {
         return false;
     }
     if (move->type == 'h' || move->type == 'v') {   // wall move
-        return legal_wall(move->x, move->y, move->player, move->type == 'h');
+        return legal_wall(move->x, move->y, move->player, move->type == 'h', true);
     } else {                                        // pawn move
         return legal_step(move->x, move->y, move->player);
     }
@@ -685,11 +693,14 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
             // examine moves in (random) order
             bool accepted = false;
             for (Quoridor_move *move : pool) {
-                if (!accepted && s.legal_move(move)) {               // full check
-                    int enemy_enc = s.get_shortest_path(enemy, move) - s.get_shortest_path(enemy);
-                    if (enemy_enc > 0) {
-                        int our_enc = s.get_shortest_path(p, move) - s.get_shortest_path(p);
-                        if (enemy_enc > our_enc) {         // must annoy the enemy more than us
+                if (!accepted) {
+                    /** Note: we also check if the wall is legal for blocking manually */
+                    int enemy_path = s.get_shortest_path(enemy, move);
+                    int enemy_enc = enemy_path - s.get_shortest_path(enemy);
+                    if (enemy_path >= 0 && enemy_enc > 0) {
+                        int our_path = s.get_shortest_path(p, move);
+                        int our_enc = our_path - s.get_shortest_path(p);
+                        if (our_path >= 0 && enemy_enc > our_enc) {         // must annoy the enemy more than us
                             wallmove = move;
                             accepted = true;
                             continue;             // avoids deleting this move
@@ -738,23 +749,23 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
  * then this is dealt with in select_best_child of mcts!
  */
 double Quoridor_state::rollout() const {
-    #define MAXSTEPS 200
+    #define MAXSTEPS 64
     #define EVALUATION_THRESHOLD 0.8     // when eval is this skewed then don't simulate any more, return eval
+//    #define DDEBUG
 
     // TODO: is it random enough? Or would very close time(NULL) calls return the same?
     // random generator
     // random_device rd;                  // random seed source
 
-    // TODO: BUG: Illegal walls that close all enemy paths are somehow allowed in rollouts!
-
     uniform_real_distribution<double> dist(0.0, 1.0);
     // copy current state (bypasses const restriction and allows to change state)
     Quoridor_state s(*this);
     bool noerror;
+    #ifdef DDEBUG
+    queue<Quoridor_move *> hist;
+    #endif
     for (int i = 0 ; i < MAXSTEPS ; i++) {
-#ifdef DDEBUG
-        s.print();
-#endif
+
         // first check if terminal state
         if (s.is_terminal()) {
             return (s.check_winner() == 'W') ? 1.0 : 0.0;
@@ -767,16 +778,26 @@ double Quoridor_state::rollout() const {
         // otherwise keep simulating until we do or reached a certain depth
         Quoridor_move *m = pick_semirandom_move(s, dist, generator);
         if (!s.legal_move(m)) {
-            cout << "Picked illegal move intentionally (so not legal_move()'s fault)!" << endl;
+            cout << "Picked illegal move: " << ((m != NULL) ? m->sprint() : "NULL" ) << " intentionally! Move history:" << endl;
+            #ifdef DDEBUG
+            while (!hist.empty()) {
+                Quoridor_move *prev = hist.front();
+                hist.pop();
+                cout << prev->sprint() << endl;
+            }
+            #endif
         }
-#ifdef DDEBUG
-        cout << "Semirandom move: " << m->sprint() << endl;
-#endif
+        #ifdef DDEBUG
+        hist.push(m);
+        #endif
         noerror = s.play_move(m);
         if (!noerror) {
             cerr << "Error: in rollouts" << endl;
             break;
         }
+        #ifndef DDEBUG
+        delete m;
+        #endif
     }
     return evaluate_position(s, false);
 }
