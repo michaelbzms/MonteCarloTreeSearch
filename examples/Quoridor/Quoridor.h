@@ -37,7 +37,7 @@ class Quoridor_state : public MCTS_state {
     /** Effectively a look-up table:
      * ' ', 'h', 'v', 'b' for empty, horizontal, vertical and both walls in the right and bottom part of a cell */
     char walls[9][9]{};
-    bool wall_connections[8][8]{};    // TODO: can be a bitmap to save up space (bools are 1 byte = 8 bits)
+    bool wall_connections[8][8]{};    // Note: can be a bitmap to save up space (bools are 1 byte = 8 bits)
     /** Whose turn it is to play: 'W' or 'B' */
     char turn;
     /** Keep track of the distance from each player to each square while

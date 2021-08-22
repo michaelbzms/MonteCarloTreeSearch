@@ -2,16 +2,23 @@
 #include "Quoridor.h"
 #include "../../mcts/include/mcts.h"
 
-//TODO: make this prettier
-#define COMMANDS "Valid commands are:\n - quit or q\n - help\n - autoprint\n - winner\n - showboard or print\n - playmove or m <col><row>\n - playwall or w <type> <col><row>\n - genmove\n - clearboard or reset\n"
+/** AI PARAMETERS **/
+#define MAXITER 10000
+#define MAXSECONDS 10
+
 #define PROMPT "> "
 
+const string commands = R"(Valid commands are:
+  quit or q                         -- exits program
+  help                              -- lists commands
+  autoprint                         -- toggles automatic printing of the board after every command (initially true)
+  winner                            -- check if there is a winner yet and who
+  showboard or print                -- prints board
+  playmove or m <col><row>          -- plays a move for current player
+  playwall or w <type> <col><row>   -- places a wall for current player
+  genmove                           -- generates move for current player using MCTS
+  clearboard or reset               -- resets the board)";
 
-char parse_player(const string &s) {
-    if (s == "W" || s == "w" || s == "White" || s == "white" || s == "WHITE") return 'W';
-    if (s == "B" || s == "b" || s == "Black" || s == "black" || s == "BLACK") return 'B';
-    return 0x00;
-}
 
 char parse_type(const string &s) {
     if (s == "H" || s == "h" || s == "Horizontal" || s == "horizontal" || s == "HORIZONTAL") return 'h';
@@ -36,7 +43,7 @@ int main() {
     cout << "============================================================" << endl
          << "===============╣    Welcome to Quoridor!    ╠===============" << endl
          << "============================================================" << endl << endl;
-    cout << COMMANDS << endl << endl;
+    cout << commands << endl << endl;
 
     Quoridor_state *state = new Quoridor_state();
     string command;
@@ -56,7 +63,7 @@ int main() {
             break;
         }
         else if (command == "listcommands" || command == "help") {
-            cout << COMMANDS << endl;
+            cout << commands << endl;
         }
         else if (command == "autoprint") {
             auto_print = !auto_print;        // toggle
@@ -119,14 +126,11 @@ int main() {
                 }
             }
         }
-        else if (command == "genmove") {
+        else if (command == "genmove") {    // generate AI move
             if (winner != ' ') {
                 cin.ignore(512, '\n');
                 cout << "Game has already finished." << endl << endl;
             } else {
-                // generate AI move
-                #define MAXITER 100000
-                #define MAXSECONDS 15
 
                 // grow tree by thinking ahead and sampling monte carlo rollouts
                 game_tree->grow_tree(MAXITER, MAXSECONDS);

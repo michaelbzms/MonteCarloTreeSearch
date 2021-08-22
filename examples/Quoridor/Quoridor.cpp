@@ -75,7 +75,7 @@ short int **Quoridor_state::calculate_dists_from(short int x, short int y, bool 
         bool operator==(const Node& other) const { return x == other.x && y == other.y; }
     };
     queue<Node> Q;
-    Q.push(Node(x, y, 0));       // TODO: does this work? Like allocate to stack?
+    Q.push(Node(x, y, 0));
     dists[x][y] = 0;
     while(!Q.empty()) {
         // get new node
@@ -144,8 +144,10 @@ int Quoridor_state::get_shortest_path(char player, const Quoridor_move *extra_wa
     // if dists is NULL then we need to re-calculate dists separately (disregarding previous value)
     if (extra_wall_move != NULL) {
         // should not happen:
-        if (extra_wall_move->type != 'h' && extra_wall_move->type != 'v') { cerr << "Error: extra_wall_move is not a wall move!" << endl; return -1; }
-        // TODO: the move must be legal but can we assume this or should we check? Do we check it twice this way?
+        if (extra_wall_move->type != 'h' && extra_wall_move->type != 'v') {
+            cerr << "Error: extra_wall_move is not a wall move!" << endl;
+            return -1;
+        }
         if (!legal_wall(extra_wall_move->x, extra_wall_move->y, extra_wall_move->player, extra_wall_move->type == 'h', false)) {   // (!) check_blocking = false to prevent infinite loop
             cerr << "Error: extra_wall_move is illegal!" << endl;
             return -1;
@@ -203,7 +205,6 @@ void Quoridor_state::remove_wall(short x, short y, bool horizontal) {
 }
 
 bool Quoridor_state::legal_step(short int x, short int y, char p) const {
-    // TODO: Double Check
     // check if our turn
     if (p != turn) return false;
     // check if out-of-bouds
@@ -285,7 +286,6 @@ bool Quoridor_state::legal_step(short int x, short int y, char p) const {
 }
 
 bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizontal, bool check_blocking) {
-    // TODO: Double-check
     // check if our turn
     if (p != turn) return false;
     // check out-of-bounds
@@ -303,7 +303,7 @@ bool Quoridor_state::legal_wall(short int x, short int y, char p, bool horizonta
     // check if playing this wall blocks a pawn's path (expensive, avoid when possible)
     if (check_blocking) {
         // TODO: if there are no walls/edges in both sides then there is no way this wall closed any paths.. -> don't bfs
-        // But that is very hard to check so instead do this (check for completely isolated ones:
+        // But that is very hard to check so instead just check for completely isolated ones:
         bool isolated = true;
         for (int i = x - 1 ; i <= x + 1 + ((int) !horizontal) ; i++) {
             if (i < 0 || i >= 9) continue;       // ignore out-of-bounds areas
@@ -391,8 +391,8 @@ bool Quoridor_state::play_move(const Quoridor_move *move) {
 }
 
 void Quoridor_state::print() const {
-#define VWALL "║"
-#define BOTH "╬"
+    #define VWALL "║"
+    #define BOTH "╬"
     cout << endl << "  ";
     for (int i = 0 ; i < 9 ; i++) {
         cout << "     " << (char) ('A' + i);
@@ -477,7 +477,7 @@ Quoridor_move *Quoridor_state::get_best_step_move(char player) {
     Quoridor_move *argmin = NULL;
     forward_list<MCTS_move *> list = get_legal_step_moves(player);
     for (auto *move : list) {
-        Quoridor_move *m = (Quoridor_move *) move;                             // TODO: casting necessary unless I change the return type
+        Quoridor_move *m = (Quoridor_move *) move;
         int path = get_shortest_path(player, NULL, m->x, m->y);
         if (path >= 0 && path < min) {
             min = path;
@@ -491,7 +491,7 @@ Quoridor_move *Quoridor_state::get_best_step_move(char player) {
         cerr << "Warning: Could not find best move in this state:" << endl;
         this->print();
     }
-    list.clear();              // TODO: is this needed?
+    list.clear();
     return argmin;
 }
 
@@ -592,9 +592,9 @@ queue<MCTS_move *> *Quoridor_state::generate_good_moves() {
 
 
 queue<MCTS_move *> *Quoridor_state::actions_to_try() const {
-    // TODO: hack to avoid const error. This is a problem design-wise...
-    // Note: actions_to_try() should probably be const in superclass but it would be very inefficient to be so here because
-    // we would need to recalculate paths every time!
+    /** Note: actions_to_try() should probably be const in superclass but it would be very inefficient
+     * to be so here because we would need to recalculate paths every time!
+     * This is a hack to avoid const error in this specific case. */
     return const_cast<Quoridor_state *>(this)->generate_good_moves();
 }
 
@@ -620,17 +620,15 @@ double evaluate_position(Quoridor_state &s, bool cheap) {
         return 1.0 - (GUESS_WIN_CONF - 0.1);
     }
 
-    /** heuristic metric for difference in walls
-     * - In [0, 1]. 0 when equal walls, 1 when enemy has 0 walls and we have > 0.
-     */
+    /** Heuristic metric for difference in walls
+     * - In [0, 1]. 0 when equal walls, 1 when enemy has 0 walls and we have > 0. */
     double wallsdiff_metric = 0.0;
     double max = s.wwallsno > s.bwallsno ? s.wwallsno : s.bwallsno;
     if (max > 0)
         wallsdiff_metric = ((s.wwallsno > s.bwallsno) ? +1 : -1) * (((double) pow(s.wwallsno - s.bwallsno, 2)) / ((double) pow(max, 2)));
 
-    /** shortest distance heuristic
-     * - After some lead it doesn't matter if we get even more ahead, we get the full bonus --> keep ur walls?
-     */
+    /** Shortest distance heuristic
+     * - After some lead it doesn't matter if we get even more ahead, we get the full bonus --> keep your walls? */
     double path_diff = black_path - white_path + (s.whose_turn() == 'W' ? +0.5 : -0.5);    // bonus for whose turn it is to play
     double distance_metric = ((double) MAX(path_diff, 10.0)) / 10.0;
 
@@ -664,7 +662,6 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
                                (s.get_number_of_turns() <= 6) ? (WALL_VS_MOVE_CHANCE / 2) : WALL_VS_MOVE_CHANCE;
 
     if (s.remaining_walls(s.whose_turn() > 0 && (force_playwall(s) || dist(gen) < wall_vs_move_prob))) {
-        // play wall
         /** Idea: Avoid finding all good walls to then just pick one at random
          * - Put all moves we can't immediately reject in a pool (cheap -> no bfs)
          * - Shuffle pool and sample without replacement by iterating
@@ -673,6 +670,7 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
          *      2. good enough (with bfs)
          *   and if so play it, else continue searching. If no good move was found return random one or step move.
          */
+        // play wall
         vector<Quoridor_move *> pool;
         pool.reserve(128);
         for (short int i = 0 ; i < 8 ; i++) {
@@ -706,7 +704,7 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
                             continue;             // avoids deleting this move
                         }
                     }
-                    // TODO: A wall could be good in other ways as well e.g. blocks an enemy good wall
+                    // TODO: A wall could be good in other ways as well e.g. blocks an enemy good wall. How do we consider those cheaply?
                 }
                 delete move;                     // delete all not selected moves
             }
@@ -749,17 +747,12 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
  * then this is dealt with in select_best_child of mcts!
  */
 double Quoridor_state::rollout() const {
-    #define MAXSTEPS 64
+    #define MAXSTEPS 50
     #define EVALUATION_THRESHOLD 0.8     // when eval is this skewed then don't simulate any more, return eval
-//    #define DDEBUG
-
-    // TODO: is it random enough? Or would very close time(NULL) calls return the same?
-    // random generator
-    // random_device rd;                  // random seed source
+    // #define DDEBUG
 
     uniform_real_distribution<double> dist(0.0, 1.0);
-    // copy current state (bypasses const restriction and allows to change state)
-    Quoridor_state s(*this);
+    Quoridor_state s(*this);     // copy current state (bypasses const restriction and allows to change state)
     bool noerror;
     #ifdef DDEBUG
     queue<Quoridor_move *> hist;
