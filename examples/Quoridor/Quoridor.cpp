@@ -102,13 +102,6 @@ short int **Quoridor_state::calculate_dists_from(short int x, short int y, bool 
             Q.push(Node(n.x, n.y + 1, n.dist + 1));
         }
     }
-//    for (int i = 0 ; i < 9 ; i++) {
-//        for (int j = 0 ; j < 9 ; j++) {
-//            cout << dists[i][j] << " ";
-//        }
-//        cout << endl;
-//    }
-
     return dists;
 }
 
