@@ -246,34 +246,42 @@ bool Quoridor_state::legal_step(short int x, short int y, char p) const {
     if (x >= 0 && y >= 0 && x == posx - 1 && y == posy - 1) {                   // up-left
         if (enemy_posx == posx - 1 && enemy_posy == posy &&
             (posx - 2 < 0 || horizontal_wall(posx - 2, posy)) &&
-            !vertical_wall(posx - 1, posy - 1)) return true;
+            !vertical_wall(posx - 1, posy - 1) &&
+            !horizontal_wall(posx - 1, posy)) return true;
         if (enemy_posx == posx && enemy_posy == posy - 1 &&
             (posy - 2 < 0 || vertical_wall(posx, posy - 2)) &&
-            !horizontal_wall(posx - 1, posy - 1)) return true;
+            !horizontal_wall(posx - 1, posy - 1) &&
+            !vertical_wall(posx, posy - 1)) return true;
     }
     if (x >= 0 && y < 9 && x == posx - 1 && y == posy + 1) {                    // up-right
         if (enemy_posx == posx - 1 && enemy_posy == posy &&
             (posx - 2 < 0 || horizontal_wall(posx - 2, posy)) &&
-            !vertical_wall(posx - 1, posy)) return true;
+            !vertical_wall(posx - 1, posy) &&
+            !horizontal_wall(posx - 1, posy)) return true;
         if (enemy_posx == posx && enemy_posy == posy + 1 &&
             (posy + 2 >= 9 || vertical_wall(posx, posy + 1)) &&
-            !horizontal_wall(posx - 1, posy + 1)) return true;
+            !horizontal_wall(posx - 1, posy + 1) &&
+            !vertical_wall(posx, posy)) return true;
     }
     if (x < 9 && y >= 0 && x == posx + 1 && y == posy - 1) {                   // down-left
         if (enemy_posx == posx + 1 && enemy_posy == posy &&
             (posx + 2 >= 9 || horizontal_wall(posx + 1, posy)) &&
-            !vertical_wall(posx + 1, posy - 1)) return true;
+            !vertical_wall(posx + 1, posy - 1) &&
+            !horizontal_wall(posx, posy)) return true;
         if (enemy_posx == posx && enemy_posy == posy - 1 &&
             (posy - 2 < 0 || vertical_wall(posx, posy - 2)) &&
-            !horizontal_wall(posx, posy - 1)) return true;
+            !horizontal_wall(posx, posy - 1) &&
+            !vertical_wall(posx, posy - 1)) return true;
     }
     if (x < 9 && y < 9 && x == posx + 1 && y == posy + 1) {                   // down-right
         if (enemy_posx == posx + 1 && enemy_posy == posy &&
             (posx + 2 >= 9 || horizontal_wall(posx + 1, posy)) &&
-            !vertical_wall(posx + 1, posy)) return true;
+            !vertical_wall(posx + 1, posy) &&
+            !horizontal_wall(posx, posy)) return true;
         if (enemy_posx == posx && enemy_posy == posy + 1 &&
             (posy + 2 >= 9 || vertical_wall(posx, posy + 1)) &&
-            !horizontal_wall(posx, posy + 1)) return true;
+            !horizontal_wall(posx, posy + 1) &&
+            !vertical_wall(posx, posy)) return true;
     }
     return false;
 }
@@ -583,12 +591,36 @@ queue<MCTS_move *> *Quoridor_state::generate_good_moves() {
     return Q;
 }
 
+queue<MCTS_move *> *Quoridor_state::generate_all_moves() {
+    char p = turn, enemy = (turn == 'W') ? 'B' : 'W';
+    queue<MCTS_move *> *Q = new queue<MCTS_move *>();
+    // First consider all legal step moves
+    forward_list<MCTS_move *> list = get_legal_step_moves(p);
+    for (auto &move : list) {
+        Q->push(move);
+    }
+    // Second consider all wall moves
+    if (remaining_walls(p) > 0) {
+        for (short int i = 0; i < 8; i++) {
+            for (short int j = 0; j < 8; j++) {
+                for (short int k = 0; k < 2; k++) {
+                    if (legal_wall(i, j, p, k == 0, true)) {
+                        Quoridor_move *wallmove = new Quoridor_move(i, j, p, (k == 0) ? 'h' : 'v');
+                        Q->push(wallmove);
+                    }
+                }
+            }
+        }
+    }
+    return Q;
+}
 
 queue<MCTS_move *> *Quoridor_state::actions_to_try() const {
     /** Note: actions_to_try() should probably be const in superclass but it would be very inefficient
      * to be so here because we would need to recalculate paths every time!
      * This is a hack to avoid const error in this specific case. */
-    return const_cast<Quoridor_state *>(this)->generate_good_moves();
+//    return const_cast<Quoridor_state *>(this)->generate_good_moves();
+    return const_cast<Quoridor_state *>(this)->generate_all_moves();
 }
 
 double evaluate_position(Quoridor_state &s, bool cheap) {
@@ -751,7 +783,6 @@ double Quoridor_state::rollout() const {
     queue<Quoridor_move *> hist;
     #endif
     for (int i = 0 ; i < MAXSTEPS ; i++) {
-
         // first check if terminal state
         if (s.is_terminal()) {
             return (s.check_winner() == 'W') ? 1.0 : 0.0;

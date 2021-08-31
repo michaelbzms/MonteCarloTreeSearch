@@ -74,6 +74,7 @@ public:
     Quoridor_move *get_best_step_move(char player);
     /** Heuristics **/
     queue<MCTS_move *> *generate_good_moves();
+    queue<MCTS_move *> *generate_all_moves();
     friend bool force_playwall(Quoridor_state &s);
     friend Quoridor_move *pick_semirandom_move(Quoridor_state &s, std::uniform_real_distribution<double> &dist, std::default_random_engine &gen);
     friend double evaluate_position(Quoridor_state &s, bool cheap);
