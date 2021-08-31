@@ -185,6 +185,7 @@ int main() {
         flush(cout);
     }
     delete state;
+    delete game_tree;
     return 0;
 }
 

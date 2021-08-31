@@ -5,14 +5,17 @@
 #include <vector>
 #include <queue>
 #include <iomanip>
+#include "JobScheduler.h"
+
 
 #define STARTING_NUMBER_OF_CHILDREN 32   // expected number so that we can preallocate this many pointers
+#define PARALLEL_ROLLOUTS                // whether or not to do multiple parallel rollouts
 
 
 using namespace std;
 
-/** TODOs
- * - state should probably be const
+/** Ideas for improvements:
+ * - state should probably be const like move is (currently problematic because of Quoridor's example)
  * - Instead of a FIFO Queue use a Priority Queue with priority on most probable (better) actions to be explored first
   or maybe this should just be an iterable and we let the implementation decide but these have no superclasses in C++ it seems
  * - vectors, queues and these structures allocate data on the heap anyway so there is little point in using the heap for them
@@ -63,7 +66,7 @@ public:
 };
 
 
-class MCTS_agent {
+class MCTS_agent {                           // example of an agent based on the MCTS_tree. One can also use the tree directly.
     MCTS_tree *tree;
     int max_iter, max_seconds;
 public:
@@ -72,6 +75,18 @@ public:
     const MCTS_move *genmove(const MCTS_move *enemy_move);
     const MCTS_state *get_current_state() const;
     void feedback() const { tree->print_stats(); }
+};
+
+
+class RolloutJob : public Job {             // class for performing parallel simulations using a thread pool
+    double *score;
+    const MCTS_state *state;
+public:
+    RolloutJob(const MCTS_state *state, double *score) : Job(), state(state), score(score) {}
+    void run() override {
+        // put the result in the memory specified at construction time as this Job will be deleted when done (can't store it here)
+        *score = state->rollout();
+    }
 };
 
 

@@ -242,7 +242,7 @@ bool Quoridor_state::legal_step(short int x, short int y, char p) const {
                 enemy_posx == posx && enemy_posy == posy + 1) return true;      // right-right
         }
     }
-    // check diagonal moves  TODO this is wrong
+    // check diagonal moves
     if (x >= 0 && y >= 0 && x == posx - 1 && y == posy - 1) {                   // up-left
         if (enemy_posx == posx - 1 && enemy_posy == posy &&
             (posx - 2 < 0 || horizontal_wall(posx - 2, posy)) &&

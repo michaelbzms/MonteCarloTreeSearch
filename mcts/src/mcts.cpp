@@ -54,14 +54,34 @@ void MCTS_node::expand() {
 }
 
 void MCTS_node::rollout() {
-    // TODO: do more than one simulations? Perhaps in parallel?
+#ifdef PARALLEL_ROLLOUTS
+    // schedule Jobs
+    double results[NUMBER_OF_THREADS]{-1};
+    JobScheduler scheduler;
+    for (int i = 0 ; i < NUMBER_OF_THREADS ; i++) {
+        scheduler.schedule(new RolloutJob(state, &results[i]));
+    }
+    // wait for all simulations to finish
+    scheduler.waitUntilJobsHaveFinished();
+    // aggregate results
+    double score_sum = 0.0;
+    for (int i = 0 ; i < NUMBER_OF_THREADS ; i++) {
+        if (results[i] >= 0.0 && results[i] <= 1.0){
+            score_sum += results[i];
+        } else {    // should not happen
+            cerr << "Warning: Invalid result when aggregating parallel rollouts" << endl;
+        }
+    }
+    backpropagate(score_sum, NUMBER_OF_THREADS);
+#else
     double w = state->rollout();
     backpropagate(w, 1);
+#endif
 }
 
 void MCTS_node::backpropagate(double w, int n) {
     score += w;
-    number_of_simulations++;
+    number_of_simulations += n;
     if (parent != NULL) {
         parent->size++;
         parent->backpropagate(w, n);
@@ -207,7 +227,7 @@ void MCTS_node::print_stats() const {
          << "Tree size: " << size << endl
          << "Number of simulations: " << number_of_simulations << endl
          << "Branching factor at root: " << children->size() << endl
-         << "Chances of winning: " << setprecision(4) << 100.0 * (score / number_of_simulations) << "%" << endl;
+         << "Chances of P1 winning: " << setprecision(4) << 100.0 * (score / number_of_simulations) << "%" << endl;
     cout << "________________________________" << endl;
 }
 
