@@ -56,8 +56,8 @@ void MCTS_node::expand() {
 void MCTS_node::rollout() {
 #ifdef PARALLEL_ROLLOUTS
     // schedule Jobs
+    static JobScheduler scheduler;               // static so that we don't create new threads every time (!)
     double results[NUMBER_OF_THREADS]{-1};
-    JobScheduler scheduler;
     for (int i = 0 ; i < NUMBER_OF_THREADS ; i++) {
         scheduler.schedule(new RolloutJob(state, &results[i]));
     }
