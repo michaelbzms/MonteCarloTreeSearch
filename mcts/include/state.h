@@ -10,7 +10,8 @@ using namespace std;
 
 struct MCTS_move {
     virtual ~MCTS_move() = default;
-    virtual bool operator==(const MCTS_move& other) const = 0;   // implement this!
+    virtual bool operator==(const MCTS_move& other) const = 0;             // implement this!
+    virtual string sprint() const { return "Not implemented"; }   // and optionally this
 };
 
 

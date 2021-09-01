@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cmath>
 #include <ctime>
+#include <algorithm>
 #include "../include/mcts.h"
 
 #define DEBUG
@@ -219,6 +220,7 @@ const MCTS_move *MCTS_node::get_move() const {
 const MCTS_state *MCTS_node::get_current_state() const { return state; }
 
 void MCTS_node::print_stats() const {
+    #define TOPK 5
     if (number_of_simulations == 0) {
         cout << "Tree not expanded yet" << endl;
         return;
@@ -228,7 +230,31 @@ void MCTS_node::print_stats() const {
          << "Number of simulations: " << number_of_simulations << endl
          << "Branching factor at root: " << children->size() << endl
          << "Chances of P1 winning: " << setprecision(4) << 100.0 * (score / number_of_simulations) << "%" << endl;
+    // sort children based on winrate of player's turn for this node (!)
+    if (state->player1_turn()) {
+        std::sort(children->begin(), children->end(), [](const MCTS_node *n1, const MCTS_node *n2){
+            return n1->calculate_winrate(true) > n2->calculate_winrate(true);
+        });
+    } else {
+        std::sort(children->begin(), children->end(), [](const MCTS_node *n1, const MCTS_node *n2){
+            return n1->calculate_winrate(false) > n2->calculate_winrate(false);
+        });
+    }
+    // print TOPK of them along with their winrates
+    cout << "Best moves:" << endl;
+    for (int i = 0 ; i < children->size() && i < TOPK ; i++) {
+        cout << "  " << i + 1 << ". " << children->at(i)->move->sprint() << "  -->  "
+             << setprecision(4) << 100.0 * children->at(i)->calculate_winrate(state->player1_turn()) << "%" << endl;
+    }
     cout << "________________________________" << endl;
+}
+
+double MCTS_node::calculate_winrate(bool player1turn) const {
+    if (player1turn) {
+        return score / number_of_simulations;
+    } else {
+        return 1.0 - score / number_of_simulations;
+    }
 }
 
 void MCTS_tree::advance_tree(const MCTS_move *move) {

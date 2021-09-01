@@ -21,7 +21,7 @@ struct Quoridor_move : public MCTS_move {
         const Quoridor_move &o = (const Quoridor_move &) other;
         return x == o.x && y == o.y && player == o.player && type == o.type;
     }
-    string sprint() const {
+    string sprint() const override {
         string movetype = (type == 'h') ? "places horizontal wall at" : (type == 'v') ? "places vertical wall at" : "moves to";
         string playerstr = (player == 'W') ? "White" : "Black";
         return playerstr + " " + movetype + " " + string(1, (char) ('A' + y)) + to_string(x + 1);
