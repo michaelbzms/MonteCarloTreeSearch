@@ -3,8 +3,8 @@
 #include "../../mcts/include/mcts.h"
 
 /** AI PARAMETERS **/
-#define MAXITER 10000
-#define MAXSECONDS 10
+#define MAXITER 20000
+#define MAXSECONDS 15
 
 #define PROMPT "> "
 
@@ -131,9 +131,18 @@ int main() {
                 cin.ignore(512, '\n');
                 cout << "Game has already finished." << endl << endl;
             } else {
+                // determine "thinking time" required
+                double max_seconds = MAXSECONDS;
+                if (state->remaining_walls(state->whose_turn()) == 0) {
+                    // if can't play a wall then there isn't much to think about
+                    max_seconds = (max_seconds >= 5) ? 2.5 : max_seconds / 2;
+                } else if (state->remaining_walls(state->whose_turn() == 'W' ? 'B' : 'W') == 0) {
+                    // if enemy can't play a wall then less thinking is probably required as well
+                    max_seconds = 0.75 * max_seconds;
+                }
 
                 // grow tree by thinking ahead and sampling monte carlo rollouts
-                game_tree->grow_tree(MAXITER, MAXSECONDS);
+                game_tree->grow_tree(MAXITER, max_seconds);
                 game_tree->print_stats();   // debug
 
                 // select best child node at root level
@@ -168,8 +177,14 @@ int main() {
             game_tree = new MCTS_tree(new Quoridor_state());
         }
         else if (command == "rollout") {   // for debug
-            double res = state->rollout();
-            cout << "Rollout result: " << res << endl;
+            double res = 0.0;
+            int num;
+            cin >> num;
+            for (int i = 0 ; i < num ; i++) {
+                res += state->rollout();
+            }
+            double score = res / num;
+            cout << "Rollout average score: " << setprecision(4) << 100.0 * score << endl;
         }
         else {
             cout << "? unknown command" << endl << endl;

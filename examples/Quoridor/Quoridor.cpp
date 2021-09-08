@@ -4,7 +4,7 @@
 #include <cmath>
 #include "Quoridor.h"
 
-
+#define TEST_ALL_MOVES                          // test all moves vs just some found good by a heuristic (increases branching factor of tree but could find unexpectedly good moves)
 #define MAX(A, B) (((A) > (B)) ? A : B)
 
 
@@ -619,8 +619,11 @@ queue<MCTS_move *> *Quoridor_state::actions_to_try() const {
     /** Note: actions_to_try() should probably be const in superclass but it would be very inefficient
      * to be so here because we would need to recalculate paths every time!
      * This is a hack to avoid const error in this specific case. */
-//    return const_cast<Quoridor_state *>(this)->generate_good_moves();
+#ifdef TEST_ALL_MOVES
     return const_cast<Quoridor_state *>(this)->generate_all_moves();
+#else
+    return const_cast<Quoridor_state *>(this)->generate_good_moves();
+#endif
 }
 
 double evaluate_position(Quoridor_state &s, bool cheap) {
@@ -676,8 +679,10 @@ bool force_playwall(Quoridor_state &s) {
 
 Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution<double> &dist, default_random_engine &gen) {
     #define WALL_VS_MOVE_CHANCE 0.4
-    #define BEST_VS_RANDOM_MOVE 0.8
+    #define BEST_VS_RANDOM_MOVE 0.75
     #define GUIDED_RANDOM_WALL 0.75
+
+    // TODO: add a prob for playing the best enemy wall for encumbrance (sometimes AI misses it because it's not often selected?)
 
     char p = s.turn;
     char enemy = (s.turn == 'W') ? 'B' : 'W';

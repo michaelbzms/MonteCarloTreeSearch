@@ -220,7 +220,7 @@ const MCTS_move *MCTS_node::get_move() const {
 const MCTS_state *MCTS_node::get_current_state() const { return state; }
 
 void MCTS_node::print_stats() const {
-    #define TOPK 5
+    #define TOPK 10
     if (number_of_simulations == 0) {
         cout << "Tree not expanded yet" << endl;
         return;
