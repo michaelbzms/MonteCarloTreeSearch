@@ -679,10 +679,12 @@ bool force_playwall(Quoridor_state &s) {
 
 Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution<double> &dist, default_random_engine &gen) {
     #define WALL_VS_MOVE_CHANCE 0.4
-    #define BEST_VS_RANDOM_MOVE 0.75
+    #define BEST_VS_RANDOM_MOVE 0.8
+    #define BEST_WALLMOVE 0.1                   // this is much more expensive
     #define GUIDED_RANDOM_WALL 0.75
 
-    // TODO: add a prob for playing the best enemy wall for encumbrance (sometimes AI misses it because it's not often selected?)
+    // TODO: simulations need to play smarter walls because otherwise the AI don't think of them as a threat
+    // although they are in the branching factor so they really really should think of them...
 
     char p = s.turn;
     char enemy = (s.turn == 'W') ? 'B' : 'W';
@@ -700,11 +702,12 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
          *      2. good enough (with bfs)
          *   and if so play it, else continue searching. If no good move was found return random one or step move.
          */
+        // TODO: A wall could be good in other ways as well e.g. blocks an enemy good wall. How do we consider those cheaply?
         // play wall
         vector<Quoridor_move *> pool;
         pool.reserve(128);
-        for (short int i = 0 ; i < 8 ; i++) {
-            for (short int j = 0 ; j < 8 ; j++) {
+        for (short int i = 0; i < 8; i++) {
+            for (short int j = 0; j < 8; j++) {
                 if (s.legal_wall(i, j, p, true, false)) {    // cheap checks (no check for blocking)
                     pool.push_back(new Quoridor_move(i, j, p, 'h'));
                 }
@@ -715,47 +718,74 @@ Quoridor_move *pick_semirandom_move(Quoridor_state &s, uniform_real_distribution
         }
         // shuffle pool randomly
         shuffle(begin(pool), end(pool), gen);
-        if (dist(gen) < GUIDED_RANDOM_WALL) {
-            // random but at least helpful in an obvious way
-            Quoridor_move *wallmove = NULL;
-            // examine moves in (random) order
-            bool accepted = false;
+        if (dist(gen) < BEST_WALLMOVE) {
+            /** Note: random shuffling should make the choice of maximum random in case of multiple equivalents **/
+            // check all wallmove's enc and pick the best (as in maximum difference in encumbrances)
+            Quoridor_move *bestwallmove = NULL;
+            int max_enc_diff = 0.0;
             for (Quoridor_move *move : pool) {
-                if (!accepted) {
-                    /** Note: we also check if the wall is legal for blocking manually */
-                    int enemy_path = s.get_shortest_path(enemy, move);
-                    int enemy_enc = enemy_path - s.get_shortest_path(enemy);
-                    if (enemy_path >= 0 && enemy_enc > 0) {
-                        int our_path = s.get_shortest_path(p, move);
-                        int our_enc = our_path - s.get_shortest_path(p);
-                        if (our_path >= 0 && enemy_enc > our_enc) {         // must annoy the enemy more than us
-                            wallmove = move;
-                            accepted = true;
-                            continue;             // avoids deleting this move
+                /** Note: we also check if the wall is legal for blocking manually */
+                int enemy_path = s.get_shortest_path(enemy, move);
+                int enemy_enc = enemy_path - s.get_shortest_path(enemy);
+                if (enemy_path >= 0 && enemy_enc > 0) {
+                    int our_path = s.get_shortest_path(p, move);
+                    int our_enc = our_path - s.get_shortest_path(p);
+                    if (our_path >= 0 && enemy_enc > our_enc) {         // must annoy the enemy more than us
+                        if (enemy_enc - our_enc > max_enc_diff) {
+                            delete bestwallmove;
+                            bestwallmove = move;
+                            max_enc_diff = enemy_enc - our_enc;
+                        } else {
+                            delete move;
                         }
-                    }
-                    // TODO: A wall could be good in other ways as well e.g. blocks an enemy good wall. How do we consider those cheaply?
-                }
-                delete move;                     // delete all not selected moves
+                    } else delete move;
+                } else delete move;
             }
             // if found a good move play the first one we found goon enough randomly
-            if (wallmove != NULL) return wallmove;
+            if (bestwallmove != NULL) return bestwallmove;
             // else resort to a step move by not returning here
         } else {
-            // completely random wall move
-            Quoridor_move *wallmove = NULL;
-            bool accepted = false;
-            for (Quoridor_move *move : pool) {
-                if (!accepted && s.legal_move(move)) {       // return the first legal move
-                    wallmove = move;
-                    accepted = true;
-                    continue;
+            if (dist(gen) < GUIDED_RANDOM_WALL) {
+                // random but at least helpful in an obvious way
+                Quoridor_move *wallmove = NULL;
+                // examine moves in (random) order
+                bool accepted = false;
+                for (Quoridor_move *move : pool) {
+                    if (!accepted) {
+                        /** Note: we also check if the wall is legal for blocking manually */
+                        int enemy_path = s.get_shortest_path(enemy, move);
+                        int enemy_enc = enemy_path - s.get_shortest_path(enemy);
+                        if (enemy_path >= 0 && enemy_enc > 0) {
+                            int our_path = s.get_shortest_path(p, move);
+                            int our_enc = our_path - s.get_shortest_path(p);
+                            if (our_path >= 0 && enemy_enc > our_enc) {         // must annoy the enemy more than us
+                                wallmove = move;
+                                accepted = true;
+                                continue;             // avoids deleting this move
+                            }
+                        }
+                    }
+                    delete move;                     // delete all not selected moves
                 }
-                delete move;
+                // if found a good move play the first one we found goon enough randomly
+                if (wallmove != NULL) return wallmove;
+                // else resort to a step move by not returning here
+            } else {
+                // completely random wall move
+                Quoridor_move *wallmove = NULL;
+                bool accepted = false;
+                for (Quoridor_move *move : pool) {
+                    if (!accepted && s.legal_move(move)) {       // return the first legal move
+                        wallmove = move;
+                        accepted = true;
+                        continue;
+                    }
+                    delete move;
+                }
+                // if a wallmove exists
+                if (wallmove != NULL) return wallmove;
+                // else resort to a step move by not returning here
             }
-            // if a wallmove exists
-            if (wallmove != NULL) return wallmove;
-            // else resort to a step move by not returning here
         }
     }
     // play move
