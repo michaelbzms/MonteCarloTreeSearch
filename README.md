@@ -51,3 +51,10 @@ All phases other than the rollout itself - which has to be supplied by the user 
 One way to take advantage of modern multi-core CPUs and the fact that different simulations are independent and thus embarrassingly parallel is to use a thread pool (allocated once at the beginning)
 and, instead of 1, perform multiple (e.g. as many cores as we have available) rollouts at the Simulation phase. To that end, I employ the JobScheduler.h/.cpp which uses posix threads, mutexes and
 conditional variables to implement a thread pool for embarrassingly parallel tasks. Its use is optional through a #defined variable in mcts.h.
+
+
+## References
+
+1. Max Magnuson. (2015). Monte Carlo Tree Search and Its Applications, https://digitalcommons.morris.umn.edu/horizons/vol2/iss2/4/
+
+2. Massagué Respall, Victor & Brown, Joseph & Aslam, Hamna. (2018). Monte Carlo Tree Search for Quoridor, https://www.researchgate.net/publication/327679826_Monte_Carlo_Tree_Search_for_Quoridor
